@@ -3,36 +3,40 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 
-url_list = ['https://en.wikipedia.org/wiki/Bahrain',
-            'https://en.wikipedia.org/wiki/Guatemala',
-            'https://en.wikipedia.org/wiki/Finland']
+# TODO: hier weiter:
+# überlegen, wie die zuordnung von features funktionieren kann
+# schauen, wie man auf die next siblings zugreifen kann, wenn es sie gibt
+# daraus muss dann ein neues feature gebaut werden und dann wird zu parsed_data hinzugefügt
 
-urls = pd.read_csv('url_list.csv')
-
-headers = ('Capital',
-           'Capitaland largest city',
-           'Largest city',
-           'Area')
+url_list = pd.read_csv('url_list.csv', header=None)
+feature_list = pd.read_csv('tablerow_list.csv', header=None)
 
 
-def parse_page(soup_instance):
+print(url_list.values)
+print(feature_list.values)
+
+
+def parse_soup(soup, feature_list):
     """Parse wikipedia page."""
 
-    # hier strukturell schauen, dass infobox klar wird
-    # All data of interest is under <table class="infobox vcard"> tag.
-    t = soup_instance.find('table', attrs={'class': 'infobox'})
-    data = t.find_all('tr')
-    parsed_data = {}
+    infobox = soup.find('table', attrs={'class': 'infobox'})
+    tablerow_list = infobox.find_all('tr')
 
-    for tr in data:
+    parsed_data = {}
+    for tablerow in tablerow_list:
         try:
-            attr = tr.th.text
+            feature = tablerow.th.text
+            feature = feature.strip()
         except AttributeError:
             continue
 
-        if attr in ['Capital', 'Capitaland largest city', 'Largest city', 'Official languages', 'Area']:
-            parsed_data[attr] = tr.td.text
+        # TODO: hier auch die Flagge rausziehen
+
+        if feature in feature_list.values:
+            parsed_data[feature] = tablerow.td.text
             continue
+
+        # hier city und largest city trennen
 
         # if 'Constructors' in attr:
         #    parsed_data['Constructor titles'] = tr.td.text.split()[0]
@@ -85,11 +89,17 @@ def make_dataset_row(data_dict):
 
 def main():
     data = []
-    for url in url_list:
+    for url in url_list.values:
         print("\n* Parsing data from {0}".format(url))
-        page = requests.get(url).text
-        soup = BeautifulSoup(page, 'html.parser')
-        parsed_data = parse_page(soup)
+        page = requests.get(url[0]).text
+        soup = BeautifulSoup(page, 'lxml')
+        parsed_data = parse_soup(soup, feature_list)
+        # bis hier eig auf bel. tabellen anwendbar
+
+        # ab hier dann sehr individuell
+        # vllt datatype in tablerow_list einführen, um das cleanen einfacher zu machen
+        # dann in feature list umbenennen
+
         if parsed_data:
             parsed_data = sanitize(parsed_data)
             row = make_dataset_row(parsed_data)
@@ -108,48 +118,6 @@ def main():
     #print("\n* Done. Results are exported into '{0}'".format(file_name))
 
 
-# print(page)
-
-# hier weiter
-# die beiden testen
-# dann auf der website weiter
-# wikitable gegen infobox
-
-#soup = BeautifulSoup(page.content, 'lxml')
-#infobox = soup.find('table', {'class': 'infobox'})
-# print(infobox.prettify())
-#links = infobox.find_all('a')
-#images = infobox.find_all('class="image"')
-
-# print(links)
-""" My_table = soup.find('table', {'class': 'wikitable sortable'})
-links = My_table.findAll('a')
-Countries = []
-for link in links:
-    Countries.append(link.get('title'))
-df = pd.DataFrame()
-df['Country'] = Countries """
-
-# print(links)
-# print(images)
-# print(links)
-
-#page = 'https://en.wikipedia.org/wiki/Netherlands'
-# infoboxes = pd.read_html(
-#    page, index_col=0, attrs={"class": "infobox"})
-# print(infoboxes[0])
-# print(type(infoboxes[0]))
-""" contestant_name_age_town = {item.td.text:
-
-                            [int(item.td.find_next_siblings(limit=3)[0].text),
-                             item.td.find_next_siblings(limit=3)[2].a.get('href')]
-
-                            for item in
-                            soup.find(
-                                "table", class_="wikitable").find_all('tr')
-                            if item.td is not None} """
-
-# print(contestant_name_age_town)
-
 if __name__ == '__main__':
+    print('end')
     main()
