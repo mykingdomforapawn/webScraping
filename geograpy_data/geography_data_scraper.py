@@ -1,19 +1,10 @@
+import re
+
 import lxml
 import pandas as pd
 import requests
+import unicodedata2 as uc
 from bs4 import BeautifulSoup
-
-# TODO: hier weiter:
-# überlegen, wie die zuordnung von features funktionieren kann
-# schauen, wie man auf die next siblings zugreifen kann, wenn es sie gibt
-# daraus muss dann ein neues feature gebaut werden und dann wird zu parsed_data hinzugefügt
-
-url_list = pd.read_csv('url_list.csv', header=None)
-feature_list = pd.read_csv('tablerow_list.csv', header=None)
-
-
-print(url_list.values)
-print(feature_list.values)
 
 
 def parse_soup(soup, feature_list):
@@ -21,23 +12,35 @@ def parse_soup(soup, feature_list):
 
     infobox = soup.find('table', attrs={'class': 'infobox'})
     tablerow_list = infobox.find_all('tr')
+    # TODO: hier auch die Flagge rausziehen
 
     parsed_data = {}
     for tablerow in tablerow_list:
         try:
-            feature = tablerow.th.text
-            feature = feature.strip()
+            feature = uc.normalize('NFKC', tablerow.th.text)
+            feature = clean_str(feature)
         except AttributeError:
             continue
 
-        # TODO: hier auch die Flagge rausziehen
-
         if feature in feature_list.values:
-            parsed_data[feature] = tablerow.td.text
-            continue
+            try:
+                parsed_data[feature] = uc.normalize('NFKC', tablerow.td.text)
+            except AttributeError:
+                sibling = tablerow
+                while sibling.get('class')[0] != 'mergedbottomrow':
+                    sibling = sibling.next_sibling
+                    parsed_data[feature + uc.normalize('NFKC', sibling.th.text)] = uc.normalize(
+                        'NFKC', sibling.td.text)
 
-        # hier city und largest city trennen
+    # TODO: man kann nicht die try exept methode nehmen, weil da manchmal was drinsteht
+    # also doch etwas mit area_total einführen
 
+    # TODO: eine contains Methode einführen, damit largest city und capital beide erkannst werden,
+    # aufpassen weil man dann eigentlich noch mal an den anfang springen müsste
+
+    # TODO: Bild saugen aktualisieren
+
+    # TODO: clean str methode fertig machen
         # if 'Constructors' in attr:
         #    parsed_data['Constructor titles'] = tr.td.text.split()[0]
         #    continue
@@ -48,27 +51,23 @@ def parse_soup(soup, feature_list):
     return parsed_data
 
 
+def clean_str(raw_string):
+    # lower case, [ bis ] wegnehmen, GEO UEI oder so, diese Punkte
+    cleaned_string = re.sub('[^a-zA-Z0-9()', '', raw_string)
+    # _nicht löschen
+    # [auch nicht löschen]
+    # next step: immer von ( bis ) löschenauch bei []
+    # lower case einführen
+
+    return cleaned_string
+
+
 def sanitize(data_dict):
     """Clean data from unnecessary stuff."""
     res = data_dict.copy()
 
     # Remove wiki references in square brackets.
-    for k, v in res.items():
-        try:
-            ind = v.index('[')
-            logging.warning(r" Sanitizing: '{0}' : '{1}'".format(k, v))
-            res[k] = v[:ind]
-        except (AttributeError, ValueError):
-            continue
-
-    # Sanitize 'Races entered' field.
-    #k = 'Races entered'
-    #v = res[k]
-    # try:
-    #    v = int(v)
-    # except ValueError:
-    #    logging.warning(r" Sanitizing: '{0}' : '{1}'".format(k, v))
-    #    res[k] = fetch_num(v)
+    # for k, v in res.items():
     return res
 
 
@@ -88,6 +87,8 @@ def make_dataset_row(data_dict):
 
 
 def main():
+    url_list = pd.read_csv('url_list.csv', header=None)
+    feature_list = pd.read_csv('tablerow_list.csv', header=None)
     data = []
     for url in url_list.values:
         print("\n* Parsing data from {0}".format(url))
@@ -108,14 +109,14 @@ def main():
             logging.warning("Parsing failed for '{0}'".format(url))
             continue
     print(data)
-    #table = tablib.Dataset(*data, headers=headers)
+    # table = tablib.Dataset(*data, headers=headers)
 
-    #time_str = datetime.now().strftime("%H-%M-%S")
-    #file_name = 'f1_data_' + time_str + '.csv'
+    # time_str = datetime.now().strftime("%H-%M-%S")
+    # file_name = 'f1_data_' + time_str + '.csv'
 
     # with open(file_name, 'w') as fp:
     #    print(table.csv, file=fp)
-    #print("\n* Done. Results are exported into '{0}'".format(file_name))
+    # print("\n* Done. Results are exported into '{0}'".format(file_name))
 
 
 if __name__ == '__main__':
