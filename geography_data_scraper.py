@@ -120,6 +120,8 @@ def fetch_num(st):
 
 
 def make_dataset_row(data_dict):
+    """doc
+    """
     row = [data_dict.get(item) for item in headers]
     return tuple(row)
 
