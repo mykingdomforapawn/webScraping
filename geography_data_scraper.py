@@ -7,12 +7,39 @@ import unicodedata2 as uc
 from bs4 import BeautifulSoup
 
 
-def parse_soup(soup, feature_list):
-    """Parse wikipedia page."""
+def parse_soup(soup):
+    """Parse wikipedia page.
 
-    # get infobox, search and extract image sources
+    Parameters:
+        soup (bs4.BeautifulSoup): The wikipedia page in html
+
+    Returns:
+        parsed_data (pd.DataFrame): Data from the wikipedia infobox
+
+    Raises:
+        None
+    """
     infobox = soup.find('table', attrs={'class': 'infobox'})
     image_list = infobox.find_all('a', {'class': 'image'})
+    parsed_images = get_parsed_images(image_list)
+    tablerow_list = infobox.find_all('tr')
+    parsed_text = get_parsed_text(tablerow_list)
+    parsed_data = parsed_images.append(parsed_text, ignore_index=True)
+    return parsed_data
+
+
+def get_parsed_images(image_list):
+    """Parse images from the wikipedia infobox.
+
+    Parameters:
+        image_list (bs4.BeautifulSoup): The image elemets from the wikipedia infobox in html
+
+    Returns:
+        parsed_text (pd.DataFrame): Image data from the wikipedia infobox
+
+    Raises:
+        None
+    """
     parsed_images = pd.DataFrame(columns=['category', 'feature', 'value'])
     for image_idx, image in enumerate(image_list):
         image_page = requests.get(
@@ -22,20 +49,40 @@ def parse_soup(soup, feature_list):
             'a', href=True, text='Original file')
         parsed_images.loc[image_idx] = [
             'Image', image.get('title'), image_source[0].get('href')]
+    return parsed_images
 
-    # search and extract text from table rows
-    tablerow_list = infobox.find_all('tr')
+
+def get_parsed_text(tablerow_list):
+    """Parse text from the wikipedia infobox.
+
+    Parameters:
+        tablerow_list (bs4.BeautifulSoup): The tablerows from the wikipedia infobox in html
+
+    Returns:
+        parsed_text (pd.DataFrame): Text data from the wikipedia infobox
+
+    Raises:
+        None
+    """
     parsed_text = pd.DataFrame(columns=['category', 'feature', 'value'])
     for tablerow_idx, tablerow in enumerate(tablerow_list):
         parsed_text.loc[tablerow_idx] = [
             get_category(tablerow), get_feature(tablerow), get_value(tablerow)]
-
-    parsed_data = parsed_images.append(parsed_text, ignore_index=True)
-    return parsed_data
+    return parsed_text
 
 
 def get_category(tablerow):
-    """..."""
+    """Extract the category of a tablerow.
+
+    Parameters:
+        tablerow (bs4.BeautifulSoup): A tablerow from the wikipedia infobox in html
+
+    Returns:
+        category (str): Category of the tablerow
+
+    Raises:
+        None
+    """
     if tablerow.get('class'):
         if tablerow.get('class')[0] == 'mergedtoprow':
             category = get_feature(tablerow)
@@ -47,7 +94,17 @@ def get_category(tablerow):
 
 
 def get_feature(tablerow):
-    """..."""
+    """Extract the feature of a tablerow.
+
+    Parameters:
+        tablerow (bs4.BeautifulSoup): A tablerow from the wikipedia infobox in html
+
+    Returns:
+        feature (str): Feature of the tablerow
+
+    Raises:
+        None
+    """
     tableheader = tablerow.find('th')
     if tableheader:
         feature = tableheader.text
@@ -57,20 +114,23 @@ def get_feature(tablerow):
 
 
 def get_value(tablerow):
-    """..."""
+    """Extract the value of a tablerow.
+
+    Parameters:
+        tablerow (bs4.BeautifulSoup): A tablerow from the wikipedia infobox in html
+
+    Returns:
+        value (str): Value of the tablerow
+
+    Raises:
+        None
+    """
     tabledata = tablerow.find('td')
     if tabledata:
         value = tabledata.text
     else:
         value = 'None'
     return value
-
-
-"""         try:
-            feature = uc.normalize('NFKC', tablerow.th.text)
-            feature = clean_str(feature)
-        except AttributeError:
-            continue """
 
 
 def clean_str(raw_string):
@@ -106,6 +166,12 @@ def clean_str(raw_string):
                     parsed_data[feature + uc.normalize('NFKC', sibling.th.text)] = uc.normalize(
                         'NFKC', sibling.td.text) """
 
+    """         try:
+            feature = uc.normalize('NFKC', tablerow.th.text)
+            feature = clean_str(feature)
+        except AttributeError:
+            continue """
+
     return cleaned_string
 
 
@@ -119,13 +185,6 @@ def fetch_num(st):
             continue
 
 
-def make_dataset_row(data_dict):
-    """doc
-    """
-    row = [data_dict.get(item) for item in headers]
-    return tuple(row)
-
-
 def main():
     url_list = pd.read_csv('url_list.csv', header=None)
     feature_list = pd.read_csv('feature_list.csv', header=None)
@@ -134,7 +193,7 @@ def main():
         print("\n* Parsing data from {0}".format(url))
         page = requests.get(url[0]).text
         soup = BeautifulSoup(page, 'lxml')
-        parsed_data = parse_soup(soup, feature_list)
+        parsed_data = parse_soup(soup)
 
         # TODO: Hier weiter
 
