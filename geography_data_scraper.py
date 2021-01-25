@@ -220,6 +220,31 @@ def clean_source_brackets(data):
     return data
 
 
+def filter_data(data, feature_list):
+    """Filter data for relevant features.
+
+    Parameters:
+        data (pd.DataFrame): Data from the wikipedia infobox
+
+    Returns:
+        data (pd.DataFrame): Data from the wikipedia infobox
+
+    Raises:
+        None
+    """
+    for feature in feature_list:
+        # in interprete_feature auslagern
+        if '/' in feature:
+            [category, feature] = split. featue
+        else:
+            category, feature = feature
+
+        find row with row_category contains category and feature_category contains feature(case sensitive=false)
+
+        add found row to dataset
+    return data
+
+
 def export_data(data):
     return data
     # table = tablib.Dataset(*data, headers=headers)
@@ -232,20 +257,6 @@ def export_data(data):
     # print("\n* Done. Results are exported into '{0}'".format(file_name))
 
 
-def filter_data(data):
-    return data
-
-
-def fetch_num(st):
-    """Return first INT appeared in the string."""
-    for item in st.split():
-        try:
-            num = int(item)
-            return num
-        except ValueError:
-            continue
-
-
 def main():
     url_list = pd.read_csv('url_list.csv', header=None)
     feature_list = pd.read_csv('feature_list.csv', header=None)
@@ -256,7 +267,7 @@ def main():
         soup = BeautifulSoup(page, 'lxml')
         parsed_data = parse_soup(soup)
         cleaned_data = clean_data(parsed_data)
-        filtered_data = filter_data(cleaned_data)
+        filtered_data = filter_data(cleaned_data, feature_list)
     # TODO: cleaned_data zusammenführen
     # TODO: data wegspeichern
     export_data(data)
