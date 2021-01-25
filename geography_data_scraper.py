@@ -1,6 +1,7 @@
 import re
 
 import lxml
+import numpy as np
 import pandas as pd
 import requests
 import unicodedata2 as uc
@@ -109,7 +110,7 @@ def get_feature(tablerow):
     if tableheader:
         feature = tableheader.text
     else:
-        feature = 'None'
+        feature = ''
     return feature
 
 
@@ -129,50 +130,110 @@ def get_value(tablerow):
     if tabledata:
         value = tabledata.text
     else:
-        value = 'None'
+        value = ''
     return value
 
 
-def clean_str(raw_string):
-    """Clean data from unnecessary stuff."""
+def clean_data(data):
+    """Clean data for further processing.
 
-    # TODO: make this method
+    Parameters:
+        data (pd.DataFrame): Data from the wikipedia infobox
 
-    # lower case, [ bis ] wegnehmen, GEO UEI oder so, diese Punkte
-    cleaned_string = re.sub('[^a-zA-Z0-9()]', '', raw_string)
-    # _nicht löschen
-    # [auch nicht löschen]
-    # next step: immer von ( bis ) löschenauch bei []
-    # lower case einführen
+    Returns:
+        data (pd.DataFrame): Data from the wikipedia infobox
 
-    """ get_feature(tablerow)
-        get_value(tablerow)
-        tableheader = tablerow.find('th')
-        if tableheader:
-            tabledata = tablerow.find('td')
-            if tabledata:
-                parsed_data.loc[tablerow_idx] = [
-                    get_category(tablerow), tableheader.text, tabledata.text]
-            else:
-                parsed_data.loc[tablerow_idx] = [
-                    get_category(tablerow), tableheader.text, 'None'] """
-    """         if feature in feature_list.values:
-            try:
-                parsed_data[feature] = uc.normalize('NFKC', tablerow.td.text)
-            except AttributeError:
-                sibling = tablerow
-                while sibling.get('class')[0] != 'mergedbottomrow':
-                    sibling = sibling.next_sibling
-                    parsed_data[feature + uc.normalize('NFKC', sibling.th.text)] = uc.normalize(
-                        'NFKC', sibling.td.text) """
+    Raises:
+        None
+    """
+    data = clean_unicode(data)
+    data = clean_incomplete_rows(data)
+    data = clean_unwanted_characters(data)
+    data = clean_source_brackets(data)
+    return data
 
-    """         try:
-            feature = uc.normalize('NFKC', tablerow.th.text)
-            feature = clean_str(feature)
-        except AttributeError:
-            continue """
 
-    return cleaned_string
+def clean_unicode(data):
+    """Turn strings into pure ascii format.
+
+    Parameters:
+        data (pd.DataFrame): Data from the wikipedia infobox
+
+    Returns:
+        data (pd.DataFrame): Data from the wikipedia infobox
+
+    Raises:
+        None
+    """
+    data = data.applymap(lambda x: uc.normalize('NFKC', x))
+    return data
+
+
+def clean_incomplete_rows(data):
+    """Delete rows with incomplete data.
+
+    Parameters:
+        data (pd.DataFrame): Data from the wikipedia infobox
+
+    Returns:
+        data (pd.DataFrame): Data from the wikipedia infobox
+
+    Raises:
+        None
+    """
+    data.replace('', np.nan, inplace=True)
+    data.dropna(axis=0, how='any', inplace=True)
+    return data
+
+
+def clean_unwanted_characters(data):
+    """Clear unwanted characters from cells.
+
+    Parameters:
+        data (pd.DataFrame): Data from the wikipedia infobox
+
+    Returns:
+        data (pd.DataFrame): Data from the wikipedia infobox
+
+    Raises:
+        None
+    """
+    data = data.replace('[^a-zA-Z0-9()[]_,.:/\%$° ]', '', regex=True)
+    data = data.replace('\u2022', '', regex=True)
+    data = data.applymap(lambda x: x.strip())
+    return data
+
+
+def clean_source_brackets(data):
+    """Clear source brackets and their content.
+
+    Parameters:
+        data (pd.DataFrame): Data from the wikipedia infobox
+
+    Returns:
+        data (pd.DataFrame): Data from the wikipedia infobox
+
+    Raises:
+        None
+    """
+    data = data.applymap(lambda x: re.sub("[\[].*?[\]]", "", x))
+    return data
+
+
+def export_data(data):
+    return data
+    # table = tablib.Dataset(*data, headers=headers)
+
+    # time_str = datetime.now().strftime("%H-%M-%S")
+    # file_name = 'f1_data_' + time_str + '.csv'
+
+    # with open(file_name, 'w') as fp:
+    #    print(table.csv, file=fp)
+    # print("\n* Done. Results are exported into '{0}'".format(file_name))
+
+
+def filter_data(data):
+    return data
 
 
 def fetch_num(st):
@@ -194,25 +255,11 @@ def main():
         page = requests.get(url[0]).text
         soup = BeautifulSoup(page, 'lxml')
         parsed_data = parse_soup(soup)
-
-        # TODO: Hier weiter
-
-        if parsed_data:
-            parsed_data = sanitize(parsed_data)
-            row = make_dataset_row(parsed_data)
-            data.append(row)
-        else:
-            logging.warning("Parsing failed for '{0}'".format(url))
-            continue
-    print(data)
-    # table = tablib.Dataset(*data, headers=headers)
-
-    # time_str = datetime.now().strftime("%H-%M-%S")
-    # file_name = 'f1_data_' + time_str + '.csv'
-
-    # with open(file_name, 'w') as fp:
-    #    print(table.csv, file=fp)
-    # print("\n* Done. Results are exported into '{0}'".format(file_name))
+        cleaned_data = clean_data(parsed_data)
+        filtered_data = filter_data(cleaned_data)
+    # TODO: cleaned_data zusammenführen
+    # TODO: data wegspeichern
+    export_data(data)
 
 
 if __name__ == '__main__':
