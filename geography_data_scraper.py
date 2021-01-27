@@ -270,6 +270,44 @@ def filter_data(data, feature_list):
     return filtered_data
 
 
+def add_source(data, source):
+    """Filter data for relevant features.
+
+    Parameters:
+        data (pd.DataFrame): Data from the wikipedia infobox
+
+    Returns:
+        filtered_data (pd.DataFrame): Data from the wikipedia infobox
+
+    Raises:
+        None
+    """
+    return data
+
+
+def join_data(data, filtered_data):
+    """Filter data for relevant features.
+
+    Parameters:
+        data (pd.DataFrame): Data from the wikipedia infobox
+
+    Returns:
+        filtered_data (pd.DataFrame): Data from the wikipedia infobox
+
+    Raises:
+        None
+    """
+    restructured_data = pd.DataFrame(columns=filtered_data.feature)
+    restructured_data.loc[0] = filtered_data.value.values
+    if data.empty:
+        data = restructured_data
+    else:
+        data = pd.concat([data.reset_index(drop=True),
+                          restructured_data.reset_index(drop=True)], axis=0)
+        data.reset_index(inplace=True, drop=True)
+    return data
+
+
 def export_data(data):
     return data
     # table = tablib.Dataset(*data, headers=headers)
@@ -285,7 +323,7 @@ def export_data(data):
 def main():
     url_list = pd.read_csv('url_list.csv', header=None)
     feature_list = pd.read_csv('feature_list.csv', header=None)
-    data = []
+    data = pd.DataFrame()
     for url in url_list.values:
         print("\n* Parsing data from {0}".format(url))
         page = requests.get(url[0]).text
@@ -293,7 +331,10 @@ def main():
         parsed_data = parse_soup(soup)
         cleaned_data = clean_data(parsed_data)
         filtered_data = filter_data(cleaned_data, feature_list)
-        print(data)
+        filtered_data = add_source(filtered_data, url)
+        data = join_data(data, filtered_data)
+    print('hi')
+
     # TODO: cleaned_data zusammenführen
     # TODO: data wegspeichern
     export_data(data)
