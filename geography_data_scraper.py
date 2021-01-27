@@ -150,6 +150,7 @@ def clean_data(data):
     data = clean_incomplete_rows(data)
     data = clean_unwanted_characters(data)
     data = clean_source_brackets(data)
+    data = clean_geographic_coordinates(data)
     return data
 
 
@@ -220,8 +221,8 @@ def clean_source_brackets(data):
     return data
 
 
-def filter_data(data, feature_list):
-    """Filter data for relevant features.
+def clean_geographic_coordinates(data):
+    """Clear geographic coordinates.
 
     Parameters:
         data (pd.DataFrame): Data from the wikipedia infobox
@@ -232,17 +233,41 @@ def filter_data(data, feature_list):
     Raises:
         None
     """
-    for feature in feature_list:
-        # in interprete_feature auslagern
-        if '/' in feature:
-            [category, feature] = split. featue
-        else:
-            category, feature = feature
-
-        find row with row_category contains category and feature_category contains feature(case sensitive=false)
-
-        add found row to dataset
+    for feature in ['Capital', 'Largest city']:
+        feature_idx = data.index[data['feature'].str.contains(
+            feature, case=False)]
+        if not feature_idx.empty:
+            value = data['value'].loc[feature_idx].values[0]
+            if re.search(r"\d", value):
+                value = value[0:re.search(r"\d", value).start()]
+                data['value'].loc[feature_idx] = value
     return data
+
+
+def filter_data(data, feature_list):
+    """Filter data for relevant features.
+
+    Parameters:
+        data (pd.DataFrame): Data from the wikipedia infobox
+
+    Returns:
+        filtered_data (pd.DataFrame): Data from the wikipedia infobox
+
+    Raises:
+        None
+    """
+    filtered_data = pd.DataFrame(columns=['feature', 'value'])
+    for feature_idx, feature in enumerate(feature_list.values):
+        if '_' in feature[0]:
+            [category_split, feature_split] = feature[0].split('_')
+        else:
+            category_split, feature_split = feature[0], feature[0]
+        found_data = data[data['feature'].str.contains(
+            feature_split, case=False) & data['category'].str.contains(category_split, case=False)]
+        if not found_data.empty:
+            filtered_data.loc[feature_idx] = [
+                feature[0], found_data['value'].values[0]]
+    return filtered_data
 
 
 def export_data(data):
@@ -268,6 +293,7 @@ def main():
         parsed_data = parse_soup(soup)
         cleaned_data = clean_data(parsed_data)
         filtered_data = filter_data(cleaned_data, feature_list)
+        print(data)
     # TODO: cleaned_data zusammenführen
     # TODO: data wegspeichern
     export_data(data)
