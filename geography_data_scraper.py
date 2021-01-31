@@ -1,4 +1,5 @@
 import re
+from datetime import date
 
 import lxml
 import numpy as np
@@ -36,7 +37,7 @@ def get_parsed_images(image_list):
         image_list (bs4.BeautifulSoup): The image elemets from the wikipedia infobox in html
 
     Returns:
-        parsed_text (pd.DataFrame): Image data from the wikipedia infobox
+        parsed_images (pd.DataFrame): Image data from the wikipedia infobox
 
     Raises:
         None
@@ -249,6 +250,7 @@ def filter_data(data, feature_list):
 
     Parameters:
         data (pd.DataFrame): Data from the wikipedia infobox
+        feature_list (pd.DataFrame): Features to extract from the data
 
     Returns:
         filtered_data (pd.DataFrame): Data from the wikipedia infobox
@@ -270,18 +272,59 @@ def filter_data(data, feature_list):
     return filtered_data
 
 
-def add_source(data, source):
-    """Filter data for relevant features.
+def enrich_data(data, url, soup):
+    """Enrich data with additional information.
 
     Parameters:
         data (pd.DataFrame): Data from the wikipedia infobox
+        url (np.ndarray): String with url source
+        soup (bs4.BeautifulSoup): The wikipedia page in html
 
     Returns:
-        filtered_data (pd.DataFrame): Data from the wikipedia infobox
+        enriched_data (pd.DataFrame): Data from the wikipedia infobox
 
     Raises:
         None
     """
+    data = add_url(data, url)
+    enriched_data = add_country_name(data, soup)
+    return enriched_data
+
+
+def add_url(data, url):
+    """Add url source and access date to data.
+
+    Parameters:
+        data (pd.DataFrame): Data from the wikipedia infobox
+        url (np.ndarray): String with url source
+
+    Returns:
+        data (pd.DataFrame): Data from the wikipedia infobox
+
+    Raises:
+        None
+    """
+    today = date.today().strftime("(%d/%m/%Y)")
+    data.loc[data.shape[0]] = ['Source', url[0] + ' ' + today]
+    return data
+
+
+def add_country_name(data, soup):
+    """Add country name to data.
+
+    Parameters:
+        data (pd.DataFrame): Data from the wikipedia infobox
+        soup (bs4.BeautifulSoup): The wikipedia page in html
+
+    Returns:
+        data (pd.DataFrame): Data from the wikipedia infobox
+
+    Raises:
+        None
+    """
+    infobox = soup.find('table', attrs={'class': 'infobox'})
+    country_name = infobox.find_all('div', {'class': 'fn org country-name'})
+    data.loc[data.shape[0]] = ['Country name', country_name[0].text]
     return data
 
 
@@ -331,11 +374,10 @@ def main():
         parsed_data = parse_soup(soup)
         cleaned_data = clean_data(parsed_data)
         filtered_data = filter_data(cleaned_data, feature_list)
-        filtered_data = add_source(filtered_data, url)
+        enriched_data = enrich_data(filtered_data, url, soup)
         data = join_data(data, filtered_data)
     print('hi')
 
-    # TODO: cleaned_data zusammenführen
     # TODO: data wegspeichern
     export_data(data)
 
