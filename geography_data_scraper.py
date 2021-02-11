@@ -50,7 +50,7 @@ def get_parsed_images(image_list):
         image_source = image_soup.find_all(
             'a', href=True, text='Original file')
         parsed_images.loc[image_idx] = [
-            'Image', image.get('title'), image_source[0].get('href')]
+            'Image', image.get('title'), "<img src="+image_source[0].get('href')+">"]
     return parsed_images
 
 
@@ -327,7 +327,7 @@ def add_url(data, url):
         None
     """
     today = date.today().strftime("(%d/%m/%Y)")
-    data.loc[data.shape[0]] = ['Source', url[0] + ' ' + today]
+    data.loc[data.shape[0]+1] = ['Source', url[0] + ' ' + today]
     return data
 
 
@@ -346,7 +346,8 @@ def add_country_name(data, soup):
     """
     infobox = soup.find('table', attrs={'class': 'infobox'})
     country_name = infobox.find_all('div', {'class': 'fn org country-name'})
-    data.loc[data.shape[0]] = ['Country name', country_name[0].text]
+    data.loc[0] = ['Country name', country_name[0].text]
+    data.sort_index(inplace=True)
     return data
 
 
@@ -373,14 +374,20 @@ def join_data(data, filtered_data):
     return data
 
 
-def sort_data(data, feature_list):
-
-
 def export_data(data):
     data.to_csv('data.csv', header=False, index=False, sep=';')
 
 
 def main():
+    # url_list = liste runterladen
+    # url_list kann dann gänflich aus dem Ordner genommen werden
+    # diplomacy data von der gleichen Seite ziehen
+    # hier schon als data anlegen
+    # bei join data dann nach dem Namen reinfügen, obwohl das eher kompliziert klingt
+
+    # damm checken, was da mit Finland abgeht
+    # Gucken, welches Bild man nimmt, wenn es mehrere gibt
+
     url_list = pd.read_csv('url_list.csv', header=None)
     feature_list = pd.read_csv('feature_list.csv', header=None)
     data = pd.DataFrame()
@@ -392,14 +399,9 @@ def main():
         cleaned_data = clean_data(parsed_data)
         filtered_data = filter_data(cleaned_data, feature_list)
         enriched_data = enrich_data(filtered_data, url, soup)
-        sorted_data = sort_data(data, feature_list)
-        data = join_data(data, sorted_data)
-    print('hi')
-    print(data)
-    # TODO: data wegspeichern
+        data = join_data(data, enriched_data)
     export_data(data)
 
 
 if __name__ == '__main__':
-    print('end')
     main()
