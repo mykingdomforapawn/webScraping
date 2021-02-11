@@ -129,7 +129,7 @@ def get_value(tablerow):
     """
     tabledata = tablerow.find('td')
     if tabledata:
-        value = tabledata.text
+        value = tabledata.get_text(separator=" ", strip=True)
     else:
         value = ''
     return value
@@ -151,6 +151,7 @@ def clean_data(data):
     data = clean_incomplete_rows(data)
     data = clean_unwanted_characters(data)
     data = clean_source_brackets(data)
+    data = clean_bracket_spaces(data)
     data = clean_geographic_coordinates(data)
     return data
 
@@ -219,6 +220,27 @@ def clean_source_brackets(data):
         None
     """
     data = data.applymap(lambda x: re.sub("[\[].*?[\]]", "", x))
+    return data
+
+
+def clean_bracket_spaces(data):
+    """Clear spaces in round brackets.
+
+    Parameters:
+        data (pd.DataFrame): Data from the wikipedia infobox
+
+    Returns:
+        data (pd.DataFrame): Data from the wikipedia infobox
+
+    Raises:
+        None
+    """
+    for label, content in data.iteritems():
+        for item_idx, item in enumerate(content):
+            if re.search("(?<=\().*?(?=\))", item):
+                item = re.sub("(\(\s)", "(", item)
+                item = re.sub("(\s\))", ")", item)
+                data[label][data[label].index[item_idx]] = item
     return data
 
 
@@ -351,16 +373,11 @@ def join_data(data, filtered_data):
     return data
 
 
+def sort_data(data, feature_list):
+
+
 def export_data(data):
-    return data
-    # table = tablib.Dataset(*data, headers=headers)
-
-    # time_str = datetime.now().strftime("%H-%M-%S")
-    # file_name = 'f1_data_' + time_str + '.csv'
-
-    # with open(file_name, 'w') as fp:
-    #    print(table.csv, file=fp)
-    # print("\n* Done. Results are exported into '{0}'".format(file_name))
+    data.to_csv('data.csv', header=False, index=False, sep=';')
 
 
 def main():
@@ -375,9 +392,10 @@ def main():
         cleaned_data = clean_data(parsed_data)
         filtered_data = filter_data(cleaned_data, feature_list)
         enriched_data = enrich_data(filtered_data, url, soup)
-        data = join_data(data, filtered_data)
+        sorted_data = sort_data(data, feature_list)
+        data = join_data(data, sorted_data)
     print('hi')
-
+    print(data)
     # TODO: data wegspeichern
     export_data(data)
 
