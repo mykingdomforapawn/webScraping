@@ -378,20 +378,44 @@ def export_data(data):
     data.to_csv('data.csv', header=False, index=False, sep=';')
 
 
+def scrape_url_list(url):
+    # TODO: Dokumentieren
+    # TODO: Bisschen aufräumen, auslagern
+    # TODO: z.B. AAA rausfiltern
+    # TODO: einzelne A, B usw als clean Funktion machen
+
+    page = requests.get(url).text
+    soup = BeautifulSoup(page, 'lxml')
+    table = soup.find(
+        'table', attrs={'class': 'sortable wikitable'})
+    table_head = table.find_all('th')
+    header = pd.DataFrame(
+        [table_head_col.text for table_head_col in table_head])
+    header = header.append(pd.Series('url'), ignore_index=True)
+    header = clean_unwanted_characters(header)
+    header = clean_source_brackets(header)
+
+    url_list = pd.DataFrame(columns=header.iloc[:, 0])
+    table_body = table.find('tbody')
+    table_body_rows = table_body.find_all('tr')
+    for table_body_row in table_body_rows:
+        cols = table_body_row.find_all('td')
+        href = table_body_row.find('a', href=True)
+        parsed_row = [col.text.strip() for col in cols]
+        if href and len(parsed_row) == 4:
+            parsed_href = ['https://commons.wikimedia.org/' + href.get('href')]
+            parsed_row = parsed_row + parsed_href
+            url_list.loc[url_list.shape[0]+1] = parsed_row
+    return url_list
+
+
 def main():
-    # url_list = liste runterladen
-    # url_list kann dann gänflich aus dem Ordner genommen werden
-    # diplomacy data von der gleichen Seite ziehen
-    # hier schon als data anlegen
-    # bei join data dann nach dem Namen reinfügen, obwohl das eher kompliziert klingt
-
-    # damm checken, was da mit Finland abgeht
-    # Gucken, welches Bild man nimmt, wenn es mehrere gibt
-
-    url_list = pd.read_csv('url_list.csv', header=None)
     feature_list = pd.read_csv('feature_list.csv', header=None)
+    url_list = scrape_url_list(
+        "https://en.wikipedia.org/wiki/List_of_sovereign_states")
+
     data = pd.DataFrame()
-    for url in url_list.values:
+    for url in url_list['url']:
         print("\n* Parsing data from {0}".format(url))
         page = requests.get(url[0]).text
         soup = BeautifulSoup(page, 'lxml')
