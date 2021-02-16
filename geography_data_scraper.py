@@ -1,4 +1,5 @@
 import re
+import urllib.parse
 from datetime import date
 
 import lxml
@@ -9,28 +10,100 @@ import unicodedata2 as uc
 from bs4 import BeautifulSoup
 
 
-def parse_soup(soup):
-    """Parse wikipedia page.
+def scrape_country_list(url):
+    """Scrape url for a list of countries and their urls.
 
     Parameters:
-        soup (bs4.BeautifulSoup): The wikipedia page in html
+        url (str): Url to a page with a list of countries
 
     Returns:
-        parsed_data (pd.DataFrame): Data from the wikipedia infobox
+        country_list (pd.DataFrame): List of countries with urls to their wiki page
 
     Raises:
         None
     """
+    page = requests.get(url).text
+    soup = BeautifulSoup(page, 'lxml')
+    table = soup.find(
+        'table', attrs={'class': 'sortable wikitable'})
+    header = get_country_list_header(table)
+    body = get_country_list_body(table)
+    country_list = pd.DataFrame(body, columns=header.iloc[:, 0])
+    return country_list
+
+
+def get_country_list_header(table):
+    """Extract the table header from the soup.
+
+    Parameters:
+        soup (bs4.BeautifulSoup): The wikipedia table in html
+
+    Returns:
+        header (pd.DataFrame): Header of table for list of countries
+
+    Raises:
+        None
+    """
+    table_head = table.find_all('th')
+    header = pd.DataFrame(
+        [table_head_col.text for table_head_col in table_head])
+    header = header.append(pd.Series('url'), ignore_index=True)
+    header = clean_unwanted_characters(header)
+    header = clean_source_brackets(header)
+    return header
+
+
+def get_country_list_body(table):
+    """Extract the table body from the soup.
+
+    Parameters:
+        soup (bs4.BeautifulSoup): The wikipedia table in html
+
+    Returns:
+        body (pd.DataFrame): Body of table for list of countries
+
+    Raises:
+        None
+    """
+    table_body = table.find('tbody')
+    table_body_rows = table_body.find_all('tr')
+    body = []
+    for table_body_row in table_body_rows:
+        cols = table_body_row.find_all('td')
+        href = table_body_row.find('a', href=True)
+        parsed_row = [col.text.strip() for col in cols]
+        if href and len(parsed_row) == 4 and '↓' not in str(parsed_row) and '↑' not in str(parsed_row):
+            parsed_href = ['https://en.wikipedia.org' + href.get('href')]
+            body.append(parsed_row + parsed_href)
+    return body
+
+
+def scrape_country_data(url, feature_list):
+    """Extract the country data from the soup.
+
+    Parameters:
+        url (str): Url to a page with data from a country
+        feature_list (pd.DataFrame): Features to extract from the data
+
+    Returns:
+        country_data (pd.DataFrame): Data about a country
+
+    Raises:
+        None
+    """
+    page = requests.get(url).text
+    soup = BeautifulSoup(page, 'lxml')
     infobox = soup.find('table', attrs={'class': 'infobox'})
     image_list = infobox.find_all('a', {'class': 'image'})
-    parsed_images = get_parsed_images(image_list)
+    parsed_images = get_country_images(image_list)
     tablerow_list = infobox.find_all('tr')
-    parsed_text = get_parsed_text(tablerow_list)
-    parsed_data = parsed_images.append(parsed_text, ignore_index=True)
-    return parsed_data
+    parsed_text = get_country_text(tablerow_list)
+    country_data = parsed_images.append(parsed_text, ignore_index=True)
+    country_data = enrich_data(country_data, url, soup)
+    return country_data
 
 
-def get_parsed_images(image_list):
+def get_country_images(image_list):
     """Parse images from the wikipedia infobox.
 
     Parameters:
@@ -42,19 +115,30 @@ def get_parsed_images(image_list):
     Raises:
         None
     """
-    parsed_images = pd.DataFrame(columns=['category', 'feature', 'value'])
+    country_images = pd.DataFrame(columns=['category', 'feature', 'value'])
     for image_idx, image in enumerate(image_list):
         image_page = requests.get(
-            'https://commons.wikimedia.org/' + image.get('href')).text
+            'https://en.wikipedia.org' + image.get('href')).text
         image_soup = BeautifulSoup(image_page, 'lxml')
         image_source = image_soup.find_all(
             'a', href=True, text='Original file')
-        parsed_images.loc[image_idx] = [
-            'Image', image.get('title'), "<img src="+image_source[0].get('href')+">"]
-    return parsed_images
+        if image_source == []:
+            image_source = image_soup.find_all(
+                'a', href=True, text=re.compile('.png'))
+        if re.search('flag', image_source[0].get('href'), re.IGNORECASE):
+            feature = 'Flag'
+        elif re.search('emblem', image_source[0].get('href'), re.IGNORECASE):
+            feature = 'Emblem'
+        elif any(re.search(line, image_source[0].get('href'), re.IGNORECASE) for line in ['orthographic', 'globe', 'location', 'EU-', 'Europe-']):
+            feature = 'Location'
+        else:
+            feature = image.get('title')
+        country_images.loc[image_idx] = [
+            'Image', feature, "<img src="+image_source[0].get('href')+">"]
+    return country_images
 
 
-def get_parsed_text(tablerow_list):
+def get_country_text(tablerow_list):
     """Parse text from the wikipedia infobox.
 
     Parameters:
@@ -66,11 +150,11 @@ def get_parsed_text(tablerow_list):
     Raises:
         None
     """
-    parsed_text = pd.DataFrame(columns=['category', 'feature', 'value'])
+    country_text = pd.DataFrame(columns=['category', 'feature', 'value'])
     for tablerow_idx, tablerow in enumerate(tablerow_list):
-        parsed_text.loc[tablerow_idx] = [
+        country_text.loc[tablerow_idx] = [
             get_category(tablerow), get_feature(tablerow), get_value(tablerow)]
-    return parsed_text
+    return country_text
 
 
 def get_category(tablerow):
@@ -89,7 +173,10 @@ def get_category(tablerow):
         if tablerow.get('class')[0] == 'mergedtoprow':
             category = get_feature(tablerow)
         else:
-            category = get_category(tablerow.previous_sibling)
+            if tablerow.previous_sibling != None:
+                category = get_category(tablerow.previous_sibling)
+            else:
+                category = get_feature(tablerow)
     else:
         category = get_feature(tablerow)
     return category
@@ -135,6 +222,63 @@ def get_value(tablerow):
     return value
 
 
+def enrich_data(data, url, soup):
+    """Enrich data with additional information.
+
+    Parameters:
+        data (pd.DataFrame): Data from the wikipedia infobox
+        url (np.ndarray): String with url source
+        soup (bs4.BeautifulSoup): The wikipedia page in html
+
+    Returns:
+        enriched_data (pd.DataFrame): Data from the wikipedia infobox
+
+    Raises:
+        None
+    """
+    data = add_url(data, url)
+    enriched_data = add_country_name(data, soup)
+    return enriched_data
+
+
+def add_url(data, url):
+    """Add url source and access date to data.
+
+    Parameters:
+        data (pd.DataFrame): Data from the wikipedia infobox
+        url (np.ndarray): String with url source
+
+    Returns:
+        data (pd.DataFrame): Data from the wikipedia infobox
+
+    Raises:
+        None
+    """
+    today = date.today().strftime("(%d/%m/%Y)")
+    data.loc[data.shape[0]] = ['Source', 'Source', url + ' ' + today]
+    return data
+
+
+def add_country_name(data, soup):
+    """Add country name to data.
+
+    Parameters:
+        data (pd.DataFrame): Data from the wikipedia infobox
+        soup (bs4.BeautifulSoup): The wikipedia page in html
+
+    Returns:
+        data (pd.DataFrame): Data from the wikipedia infobox
+
+    Raises:
+        None
+    """
+    infobox = soup.find('table', attrs={'class': 'infobox'})
+    country_name = infobox.find_all('div', {'class': 'fn org country-name'})
+    data.loc[data.shape[0]] = ['Country name',
+                               'Country name', country_name[0].text]
+    return data
+
+
 def clean_data(data):
     """Clean data for further processing.
 
@@ -148,11 +292,12 @@ def clean_data(data):
         None
     """
     data = clean_unicode(data)
-    data = clean_incomplete_rows(data)
+    # data = clean_incomplete_rows(data)
     data = clean_unwanted_characters(data)
     data = clean_source_brackets(data)
     data = clean_bracket_spaces(data)
     data = clean_geographic_coordinates(data)
+    data = clean_sorting_markers(data)
     return data
 
 
@@ -168,7 +313,7 @@ def clean_unicode(data):
     Raises:
         None
     """
-    data = data.applymap(lambda x: uc.normalize('NFKC', x))
+    data = data.applymap(lambda x: uc.normalize('NFKC', str(x)))
     return data
 
 
@@ -204,6 +349,7 @@ def clean_unwanted_characters(data):
     data = data.replace('[^a-zA-Z0-9()[]_,.:/\%$° ]', '', regex=True)
     data = data.replace('\u2022', '', regex=True)
     data = data.applymap(lambda x: x.strip())
+    data = data.applymap(lambda x: urllib.parse.unquote(x))
     return data
 
 
@@ -256,14 +402,32 @@ def clean_geographic_coordinates(data):
     Raises:
         None
     """
-    for feature in ['Capital', 'Largest city']:
-        feature_idx = data.index[data['feature'].str.contains(
-            feature, case=False)]
-        if not feature_idx.empty:
-            value = data['value'].loc[feature_idx].values[0]
-            if re.search(r"\d", value):
-                value = value[0:re.search(r"\d", value).start()]
-                data['value'].loc[feature_idx] = value
+    if 'feature' in data.columns:
+        for feature in ['Capital', 'Largest city']:
+            feature_idx = data.index[data['feature'].str.contains(
+                feature, case=False)]
+            if not feature_idx.empty:
+                value = data['value'].loc[feature_idx].values[0]
+                if re.search(r"\d", value):
+                    value = value[0:re.search(r"\d", value).start()]
+                    data['value'].loc[feature_idx] = value
+    return data
+
+
+def clean_sorting_markers(data):
+    """Clear leftover html sorting markers.
+
+    Parameters:
+        data (pd.DataFrame): Data from the wikipedia infobox
+
+    Returns:
+        data (pd.DataFrame): Data from the wikipedia infobox
+
+    Raises:
+        None
+    """
+    data = data.replace(
+        regex='^A +(?=[A-Z])|^B +(?=[A-Z])|^D +(?=[A-Z])', value='')
     return data
 
 
@@ -281,73 +445,47 @@ def filter_data(data, feature_list):
         None
     """
     filtered_data = pd.DataFrame(columns=['feature', 'value'])
-    for feature_idx, feature in enumerate(feature_list.values):
+    for feature in feature_list.values:
         if '_' in feature[0]:
             [category_split, feature_split] = feature[0].split('_')
         else:
             category_split, feature_split = feature[0], feature[0]
         found_data = data[data['feature'].str.contains(
-            feature_split, case=False) & data['category'].str.contains(category_split, case=False)]
+            feature_split, case=False) & data['category'].str.contains(category_split, case=False, regex=False)]
+        if feature == 'Area_Total' and found_data.empty:
+            found_data = data[data['feature'].str.contains(
+                'Excluding', case=False) & data['category'].str.contains(category_split, case=False)]
+        if feature == 'Area_Total' and found_data.empty:
+            found_data = data[data['feature'].str.contains(
+                'Land', case=False) & data['category'].str.contains(category_split, case=False)]
+        if feature == 'Area_Total' and found_data.empty:
+            found_data = data[data['feature'].str.contains(
+                'proper', case=False) & data['category'].str.contains(category_split, case=False)]
+        if feature == 'Population_Estimate' and found_data.empty:
+            found_data = data[data['feature'].str.contains(
+                'census', case=False) & data['category'].str.contains(category_split, case=False)]
         if not found_data.empty:
-            filtered_data.loc[feature_idx] = [
+            filtered_data.loc[filtered_data.shape[0]] = [
                 feature[0], found_data['value'].values[0]]
     return filtered_data
 
 
-def enrich_data(data, url, soup):
-    """Enrich data with additional information.
-
-    Parameters:
-        data (pd.DataFrame): Data from the wikipedia infobox
-        url (np.ndarray): String with url source
-        soup (bs4.BeautifulSoup): The wikipedia page in html
-
-    Returns:
-        enriched_data (pd.DataFrame): Data from the wikipedia infobox
-
-    Raises:
-        None
-    """
-    data = add_url(data, url)
-    enriched_data = add_country_name(data, soup)
-    return enriched_data
-
-
-def add_url(data, url):
-    """Add url source and access date to data.
-
-    Parameters:
-        data (pd.DataFrame): Data from the wikipedia infobox
-        url (np.ndarray): String with url source
-
-    Returns:
-        data (pd.DataFrame): Data from the wikipedia infobox
-
-    Raises:
-        None
-    """
-    today = date.today().strftime("(%d/%m/%Y)")
-    data.loc[data.shape[0]+1] = ['Source', url[0] + ' ' + today]
-    return data
-
-
-def add_country_name(data, soup):
-    """Add country name to data.
-
-    Parameters:
-        data (pd.DataFrame): Data from the wikipedia infobox
-        soup (bs4.BeautifulSoup): The wikipedia page in html
-
-    Returns:
-        data (pd.DataFrame): Data from the wikipedia infobox
-
-    Raises:
-        None
-    """
-    infobox = soup.find('table', attrs={'class': 'infobox'})
-    country_name = infobox.find_all('div', {'class': 'fn org country-name'})
-    data.loc[0] = ['Country name', country_name[0].text]
-    data.sort_index(inplace=True)
+def combine_data(country_list, data):
+    connector_row = data.loc[data.feature == 'Source', 'value']
+    connector = re.sub(
+        ' \((.*?)\)', '', connector_row.loc[connector_row.index[0]])
+    country_list_row = country_list.loc[country_list['url'] == connector]
+    data.loc[data.feature == 'Country_name',
+             'value'] = country_list_row['Common and formal names'].loc[country_list_row.index[0]]
+    data.loc[data.shape[0]] = ['UN membership',
+                               country_list_row['Membership within the UN System'].loc[country_list_row.index[0]]]
+    if country_list_row['Further information on status and recognition of sovereignty'].loc[country_list_row.index[0]] == '':
+        filler = ''
+    else:
+        filler = ': '
+    data.loc[data.shape[0]] = ['Sovereignty dispute',
+                               country_list_row['Sovereignty dispute'].loc[country_list_row.index[0]] + filler
+                               + country_list_row['Further information on status and recognition of sovereignty'].loc[country_list_row.index[0]]]
     return data
 
 
@@ -378,54 +516,56 @@ def export_data(data):
     data.to_csv('data.csv', header=False, index=False, sep=';')
 
 
-def scrape_url_list(url):
-    # TODO: Dokumentieren
-    # TODO: Bisschen aufräumen, auslagern
-    # TODO: z.B. AAA rausfiltern
-    # TODO: einzelne A, B usw als clean Funktion machen
-
-    page = requests.get(url).text
-    soup = BeautifulSoup(page, 'lxml')
-    table = soup.find(
-        'table', attrs={'class': 'sortable wikitable'})
-    table_head = table.find_all('th')
-    header = pd.DataFrame(
-        [table_head_col.text for table_head_col in table_head])
-    header = header.append(pd.Series('url'), ignore_index=True)
-    header = clean_unwanted_characters(header)
-    header = clean_source_brackets(header)
-
-    url_list = pd.DataFrame(columns=header.iloc[:, 0])
-    table_body = table.find('tbody')
-    table_body_rows = table_body.find_all('tr')
-    for table_body_row in table_body_rows:
-        cols = table_body_row.find_all('td')
-        href = table_body_row.find('a', href=True)
-        parsed_row = [col.text.strip() for col in cols]
-        if href and len(parsed_row) == 4:
-            parsed_href = ['https://commons.wikimedia.org/' + href.get('href')]
-            parsed_row = parsed_row + parsed_href
-            url_list.loc[url_list.shape[0]+1] = parsed_row
-    return url_list
-
-
 def main():
-    feature_list = pd.read_csv('feature_list.csv', header=None)
-    url_list = scrape_url_list(
-        "https://en.wikipedia.org/wiki/List_of_sovereign_states")
+    country_list_url = "https://en.wikipedia.org/wiki/List_of_sovereign_states"
+    print("\n* Scraping country list data from {0}".format(country_list_url))
+    country_list = scrape_country_list(country_list_url)
+    country_list = clean_data(country_list)
 
-    data = pd.DataFrame()
-    for url in url_list['url']:
-        print("\n* Parsing data from {0}".format(url))
-        page = requests.get(url[0]).text
-        soup = BeautifulSoup(page, 'lxml')
-        parsed_data = parse_soup(soup)
-        cleaned_data = clean_data(parsed_data)
-        filtered_data = filter_data(cleaned_data, feature_list)
-        enriched_data = enrich_data(filtered_data, url, soup)
-        data = join_data(data, enriched_data)
-    export_data(data)
+    print("\n* Reading feature list")
+    feature_list = pd.read_csv('feature_list.csv', header=None)
+
+    country_data = pd.DataFrame()
+    for url in country_list['url']:
+        print("\n* Scraping country data from {0}".format(url))
+        data = scrape_country_data(url, feature_list)
+        data = clean_data(data)
+        data = filter_data(data, feature_list)
+        data = combine_data(country_list, data)
+        country_data = join_data(country_data, data)
+    export_data(country_data)
+
+    #TODO: Doku
+    # Mongolia Währung
+    # Andorra, Netherlands, Vatika, einige sovereins GDP
+
+
+def test():
+    data = pd.read_csv('data.csv', header=None, delimiter=';')
+    data.to_csv('data2.csv', header=False, index=False, sep=';')
+
+
+def test2():
+    country_list_url = "https://en.wikipedia.org/wiki/List_of_sovereign_states"
+    print("\n* Scraping country list data from {0}".format(country_list_url))
+    country_list = scrape_country_list(country_list_url)
+    country_list = clean_data(country_list)
+
+    print("\n* Reading feature list")
+    feature_list = pd.read_csv('feature_list.csv', header=None)
+
+    country_data = pd.DataFrame()
+    for url in country_list['url']:
+        print("\n* Scraping country data from {0}".format(url))
+        data = scrape_country_data(
+            'https://en.wikipedia.org/wiki/Ethiopia', feature_list)
+        data = clean_data(data)
+        data = filter_data(data, feature_list)
+        data = combine_data(country_list, data)
+        country_data = join_data(country_data, data)
+    export_data(country_data)
 
 
 if __name__ == '__main__':
+    # test2()
     main()
