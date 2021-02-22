@@ -1,13 +1,15 @@
 Country_name
 Image_Location
-Area_Total
+Area_Total/Excluding/Land/Proper
 Image_Flag
 Capital
-Capital_Largest city
-Population_Estimate
+Capital_Largest/largest
+Population_estimate/census
 Population_Density
 Religion
 Official language
+National language
+Working language
 Currency
-GDP (PPP)_Per capita
+GDP \(PPP\)_Per capita
 Source
