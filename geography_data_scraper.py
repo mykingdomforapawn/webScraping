@@ -624,12 +624,7 @@ def main():
     export_data(country_data)
 
 
-def test():
-    data = pd.read_csv('data.csv', header=None, delimiter=';')
-    data.to_csv('data2.csv', header=False, index=False, sep=';')
-
-
-def test_single_country():
+def test_single_url():
     country_list_url = "https://en.wikipedia.org/wiki/List_of_sovereign_states"
     print("\n* Scraping country list data from {0}".format(country_list_url))
     country_list = scrape_country_list(country_list_url)
@@ -652,14 +647,5 @@ def test_single_country():
 
 
 if __name__ == '__main__':
-    # test_single_country()
     main()
-    test()
-
-
-# CHeck:  Netherlands GDP(PPP) -> Exceptio einführen
-# Doku checken
-# Alles durchlaufe lassen
-# Anki anpassen
-# in Anki importieren
-# hochladen
+    # test_single_url()
