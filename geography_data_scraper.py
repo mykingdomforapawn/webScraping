@@ -335,7 +335,7 @@ def clean_unwanted_characters(data):
     """
     data = data.replace('[^a-zA-Z0-9()[]_,.:/\%$° ]', '', regex=True)
     data = data.replace('\u2022', '', regex=True)
-    data = data.replace(' a$| b$ | c$', '', regex=True)
+    data = data.replace(' a$| b$| c$', '', regex=True)
     data = data.replace(' Coordinates :', '', regex=True)
     data = data.applymap(lambda x: x.strip())
     data = data.applymap(lambda x: urllib.parse.unquote(x))
