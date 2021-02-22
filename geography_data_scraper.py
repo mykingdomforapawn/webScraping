@@ -292,7 +292,6 @@ def clean_data(data):
         None
     """
     data = clean_unicode(data)
-    # data = clean_incomplete_rows(data)
     data = clean_unwanted_characters(data)
     data = clean_source_brackets(data)
     data = clean_bracket_spaces(data)
@@ -317,23 +316,6 @@ def clean_unicode(data):
     return data
 
 
-def clean_incomplete_rows(data):
-    """Delete rows with incomplete data.
-
-    Parameters:
-        data (pd.DataFrame): Data from the wikipedia infobox
-
-    Returns:
-        data (pd.DataFrame): Data from the wikipedia infobox
-
-    Raises:
-        None
-    """
-    data.replace('', np.nan, inplace=True)
-    data.dropna(axis=0, how='any', inplace=True)
-    return data
-
-
 def clean_unwanted_characters(data):
     """Clear unwanted characters from cells.
 
@@ -348,6 +330,7 @@ def clean_unwanted_characters(data):
     """
     data = data.replace('[^a-zA-Z0-9()[]_,.:/\%$° ]', '', regex=True)
     data = data.replace('\u2022', '', regex=True)
+    data = data.replace(' a$| b$ | c$', '', regex=True)
     data = data.applymap(lambda x: x.strip())
     data = data.applymap(lambda x: urllib.parse.unquote(x))
     return data
@@ -446,24 +429,16 @@ def filter_data(data, feature_list):
     """
     filtered_data = pd.DataFrame(columns=['feature', 'value'])
     for feature in feature_list.values:
-        if '_' in feature[0]:
-            [category_split, feature_split] = feature[0].split('_')
+        feature_split = feature[0].split('_')
+        for split_idx, split in enumerate(feature_split):
+            feature_split[split_idx] = split.split('/')
+        category_split_searchfor = '|'.join(feature_split[0])
+        if len(feature_split) > 1:
+            feature_split_searchfor = '|'.join(feature_split[1])
         else:
-            category_split, feature_split = feature[0], feature[0]
+            feature_split_searchfor = category_split_searchfor
         found_data = data[data['feature'].str.contains(
-            feature_split, case=False) & data['category'].str.contains(category_split, case=False, regex=False)]
-        if feature == 'Area_Total' and found_data.empty:
-            found_data = data[data['feature'].str.contains(
-                'Excluding', case=False) & data['category'].str.contains(category_split, case=False)]
-        if feature == 'Area_Total' and found_data.empty:
-            found_data = data[data['feature'].str.contains(
-                'Land', case=False) & data['category'].str.contains(category_split, case=False)]
-        if feature == 'Area_Total' and found_data.empty:
-            found_data = data[data['feature'].str.contains(
-                'proper', case=False) & data['category'].str.contains(category_split, case=False)]
-        if feature == 'Population_Estimate' and found_data.empty:
-            found_data = data[data['feature'].str.contains(
-                'census', case=False) & data['category'].str.contains(category_split, case=False)]
+            feature_split_searchfor, case=True, regex=True) & data['category'].str.contains(category_split_searchfor, case=True, regex=True)]
         if not found_data.empty:
             filtered_data.loc[filtered_data.shape[0]] = [
                 feature[0], found_data['value'].values[0]]
@@ -512,7 +487,89 @@ def join_data(data, filtered_data):
     return data
 
 
+def process_exceptions(country_data, feature_list):
+    """Process exeptions that can't be covered by the general algorithms.
+       With more time and effort, the scraping algorithms could be modified
+       to make this function redundant.
+
+    Parameters:
+        country_data (pd.DataFrame): Data from the wikipedia infobox
+        feature_list (pd.DataFrame): Features to extract from the data
+
+    Returns:
+        country_data (pd.DataFrame): Data from the wikipedia infobox
+
+    Raises:
+        None
+    """
+    country_data = process_exception_malaysia(country_data, feature_list)
+    return country_data
+
+
+def process_exception_malaysia(country_data, feature_list):
+    """Process exeptions for malaysia. The category of 'Oficial language' is scaped
+       incorrectly and therefore it is not found while filtering.
+
+    Parameters:
+        country_data (pd.DataFrame): Data from the wikipedia infobox
+        feature_list (pd.DataFrame): Features to extract from the data
+
+    Returns:
+        country_data (pd.DataFrame): Data from the wikipedia infobox
+
+    Raises:
+        None
+    """
+    url = 'https://en.wikipedia.org/wiki/Malaysia'
+    print("\n* Processing exceptions from {0}".format(url))
+    data = scrape_country_data(url, feature_list)
+    found_data = data[data['feature'].str.contains(
+        'Official language', case=True, regex=True) & data['category'].str.contains('Capital', case=True, regex=True)]
+    found_data = clean_data(found_data)
+    if 'Official language' not in country_data.columns:
+        country_data['Official language'] = np.full(
+            country_data.shape[0], np.nan)
+    country_data.loc[country_data['Source'].str.contains(
+        url), 'Official language'] = found_data['value'].values[0]
+    return country_data
+
+
+def sort_data(country_data, feature_list):
+    """Sort data according to the feature_list and add the rest of the columns to the end.
+
+    Parameters:
+        country_data (pd.DataFrame): Data from the wikipedia infobox
+        feature_list (pd.DataFrame): Features to extract from the data
+
+    Returns:
+        country_data (pd.DataFrame): Data from the wikipedia infobox
+
+    Raises:
+        None
+    """
+    new_columns = []
+    for feature in feature_list.iloc[:, 0]:
+        if feature in country_data.columns:
+            new_columns.append(feature)
+    new_columns = new_columns + \
+        list(set(country_data.columns).difference(
+            set(feature_list.iloc[:, 0])))
+    country_data = country_data.reindex(new_columns, axis=1)
+    return country_data
+
+
 def export_data(data):
+    """Export data to a csv file.
+
+    Parameters:
+        country_data (pd.DataFrame): Data from the wikipedia infobox
+
+    Returns:
+        None
+
+    Raises:
+        None
+    """
     data.to_csv('data.csv', header=False, index=False, sep=';')
 
 
@@ -533,11 +590,9 @@ def main():
         data = filter_data(data, feature_list)
         data = combine_data(country_list, data)
         country_data = join_data(country_data, data)
+    country_data = process_exceptions(country_data, feature_lisz)
+    country_data = sort_data(country_data, feature_list)
     export_data(country_data)
-
-    #TODO: Doku
-    # Mongolia Währung
-    # Andorra, Netherlands, Vatika, einige sovereins GDP
 
 
 def test():
@@ -545,7 +600,7 @@ def test():
     data.to_csv('data2.csv', header=False, index=False, sep=';')
 
 
-def test2():
+def test_single_country:
     country_list_url = "https://en.wikipedia.org/wiki/List_of_sovereign_states"
     print("\n* Scraping country list data from {0}".format(country_list_url))
     country_list = scrape_country_list(country_list_url)
@@ -555,17 +610,19 @@ def test2():
     feature_list = pd.read_csv('feature_list.csv', header=None)
 
     country_data = pd.DataFrame()
-    for url in country_list['url']:
-        print("\n* Scraping country data from {0}".format(url))
-        data = scrape_country_data(
-            'https://en.wikipedia.org/wiki/Ethiopia', feature_list)
-        data = clean_data(data)
-        data = filter_data(data, feature_list)
-        data = combine_data(country_list, data)
-        country_data = join_data(country_data, data)
+    url = 'https://en.wikipedia.org/wiki/Latvia'
+    print("\n* Scraping country data from {0}".format(url))
+    data = scrape_country_data(url, feature_list)
+    data = clean_data(data)
+    data = filter_data(data, feature_list)
+    data = combine_data(country_list, data)
+    country_data = join_data(country_data, data)
+    country_data = process_exceptions(country_data, feature_list)
+    country_data = sort_data(country_data, feature_list)
     export_data(country_data)
 
 
 if __name__ == '__main__':
-    # test2()
+    # test_single_country()
     main()
+    test()
