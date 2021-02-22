@@ -71,6 +71,11 @@ def get_country_list_body(table):
     for table_body_row in table_body_rows:
         cols = table_body_row.find_all('td')
         href = table_body_row.find('a', href=True)
+        none_rows = table_body_row.find_all(
+            "span", style=re.compile("none"))
+        for _ in range(len(none_rows)):
+            table_body_row.find(
+                "span", style=re.compile("none")).decompose()
         parsed_row = [col.text.strip() for col in cols]
         if href and len(parsed_row) == 4 and '↓' not in str(parsed_row) and '↑' not in str(parsed_row):
             parsed_href = ['https://en.wikipedia.org' + href.get('href')]
@@ -634,7 +639,7 @@ def test_single_url():
     feature_list = pd.read_csv('feature_list.csv', header=None)
 
     country_data = pd.DataFrame()
-    url = 'https://en.wikipedia.org/wiki/Kingdom_of_the_Netherlands'
+    url = 'https://en.wikipedia.org/wiki/Abkhazia'
     print("\n* Scraping country data from {0}".format(url))
     data = scrape_country_data(url, feature_list)
     data = clean_data(data)
