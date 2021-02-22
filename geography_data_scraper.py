@@ -331,6 +331,7 @@ def clean_unwanted_characters(data):
     data = data.replace('[^a-zA-Z0-9()[]_,.:/\%$° ]', '', regex=True)
     data = data.replace('\u2022', '', regex=True)
     data = data.replace(' a$| b$ | c$', '', regex=True)
+    data = data.replace(' Coordinates :', '', regex=True)
     data = data.applymap(lambda x: x.strip())
     data = data.applymap(lambda x: urllib.parse.unquote(x))
     return data
@@ -487,7 +488,7 @@ def join_data(data, filtered_data):
     return data
 
 
-def process_exceptions(country_data, feature_list):
+def process_exceptions(country_data, country_list, feature_list):
     """Process exeptions that can't be covered by the general algorithms.
        With more time and effort, the scraping algorithms could be modified
        to make this function redundant.
@@ -503,6 +504,8 @@ def process_exceptions(country_data, feature_list):
         None
     """
     country_data = process_exception_malaysia(country_data, feature_list)
+    country_data = process_exception_netherlands(
+        country_data, country_list, feature_list)
     return country_data
 
 
@@ -531,6 +534,32 @@ def process_exception_malaysia(country_data, feature_list):
             country_data.shape[0], np.nan)
     country_data.loc[country_data['Source'].str.contains(
         url), 'Official language'] = found_data['value'].values[0]
+    return country_data
+
+
+def process_exception_netherlands(country_data, country_list, feature_list):
+    """Process exeptions for the netherlands. The scraped link leads to the page
+       of the kingdom of netherlands which includes the overseas territories. 
+
+    Parameters:
+        country_data (pd.DataFrame): Data from the wikipedia infobox
+        feature_list (pd.DataFrame): Features to extract from the data
+
+    Returns:
+        country_data (pd.DataFrame): Data from the wikipedia infobox
+
+    Raises:
+        None
+    """
+    url = 'https://en.wikipedia.org/wiki/Netherlands'
+    print("\n* Processing exceptions from {0}".format(url))
+    data = scrape_country_data(url, feature_list)
+    data = clean_data(data)
+    data = filter_data(data, feature_list)
+    idx = country_data['Country_name'] == 'Netherlands – Kingdom of the Netherlands'
+    for column in data['feature']:
+        country_data.loc[idx, column] = data.loc[data['feature']
+                                                 == column]['value'].values[0]
     return country_data
 
 
@@ -590,7 +619,7 @@ def main():
         data = filter_data(data, feature_list)
         data = combine_data(country_list, data)
         country_data = join_data(country_data, data)
-    country_data = process_exceptions(country_data, feature_lisz)
+    country_data = process_exceptions(country_data, country_list, feature_list)
     country_data = sort_data(country_data, feature_list)
     export_data(country_data)
 
@@ -600,7 +629,7 @@ def test():
     data.to_csv('data2.csv', header=False, index=False, sep=';')
 
 
-def test_single_country:
+def test_single_country():
     country_list_url = "https://en.wikipedia.org/wiki/List_of_sovereign_states"
     print("\n* Scraping country list data from {0}".format(country_list_url))
     country_list = scrape_country_list(country_list_url)
@@ -610,14 +639,14 @@ def test_single_country:
     feature_list = pd.read_csv('feature_list.csv', header=None)
 
     country_data = pd.DataFrame()
-    url = 'https://en.wikipedia.org/wiki/Latvia'
+    url = 'https://en.wikipedia.org/wiki/Kingdom_of_the_Netherlands'
     print("\n* Scraping country data from {0}".format(url))
     data = scrape_country_data(url, feature_list)
     data = clean_data(data)
     data = filter_data(data, feature_list)
     data = combine_data(country_list, data)
     country_data = join_data(country_data, data)
-    country_data = process_exceptions(country_data, feature_list)
+    country_data = process_exceptions(country_data, country_list, feature_list)
     country_data = sort_data(country_data, feature_list)
     export_data(country_data)
 
@@ -626,3 +655,11 @@ if __name__ == '__main__':
     # test_single_country()
     main()
     test()
+
+
+# CHeck:  Netherlands GDP(PPP) -> Exceptio einführen
+# Doku checken
+# Alles durchlaufe lassen
+# Anki anpassen
+# in Anki importieren
+# hochladen
