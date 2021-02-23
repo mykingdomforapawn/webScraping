@@ -23,11 +23,11 @@ This is a web scraper designed to accumulate geographical, financial and social 
 
 
 ## How to use it?
-1. Getting started: requirements.txt
-2. Defining the features: .py file
-3. Running the script: - feature_list.csv
-4: The data: - data.csv
-5. From data to flashcards:- anki and import and link to repo mit cards
+1. Getting started: Set up a [virtual environment](https://docs.python.org/3/library/venv.html) and [install the modules](https://pip.pypa.io/en/stable/user_guide/) from *requirements.txt*
+3. Defining the features: .py file
+4. Running the script: Just run *geography_data_scraper.py*
+4: The data: The accumulated will be stored in *data.csv* (semicolon seperated), each row beeing a country and each column a feature.
+5. From data to flashcards: You can either create your own anki flashcard templates and import the *data.csv* or you can directly import the cards I created to your anki app. In the latter case, you obviously don't have to run the script etc.
 
 ## Would I do it again
-for sure, is spend too much time with courses etc. it was time for a project.
+Big yes! Not only did I learn a lot more from implementing this idea compared to an assigned task, but also the stisfaction of finishing a personal project is worth it.
