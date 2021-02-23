@@ -139,7 +139,7 @@ def get_country_images(image_list):
         else:
             feature = image.get('title')
         country_images.loc[image_idx] = [
-            'Image', feature, "<img src="+image_source[0].get('href')+">"]
+            'Image', feature, "<img src=https:"+image_source[0].get('href')+">"]
     return country_images
 
 
