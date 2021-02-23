@@ -23,10 +23,10 @@ This is a web scraper designed to accumulate geographical, financial and social 
 
 
 ## How to use it?
-1. Getting started: Set up a [virtual environment](https://docs.python.org/3/library/venv.html) and [install the modules](https://pip.pypa.io/en/stable/user_guide/) from *requirements.txt*
-3. Defining the features: .py file
-4. Running the script: Just run *geography_data_scraper.py*
-4: The data: The accumulated will be stored in *data.csv* (semicolon seperated), each row beeing a country and each column a feature.
+1. Getting started: Set up a [virtual environment](https://docs.python.org/3/library/venv.html) and [install the modules](https://pip.pypa.io/en/stable/user_guide/) from *requirements.txt*.
+3. Defining the features: Add or remove features in the *feature_list.csv* file.
+5. Running the script: Run *geography_data_scraper.py*.
+4: The data: The accumulated data will be stored in *data.csv* (semicolon seperated), each row beeing a country and each column a feature.
 5. From data to flashcards: You can either create your own anki flashcard templates and import the *data.csv* or you can directly import the cards I created to your anki app. In the latter case, you obviously don't have to run the script etc.
 
 ## Would I do it again
