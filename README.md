@@ -29,5 +29,5 @@ This is a web scraper designed to accumulate geographical, financial and social 
 4: The data: The accumulated data will be stored in *data.csv* (semicolon seperated), each row beeing a country and each column a feature.
 5. From data to flashcards: You can either create your own anki flashcard templates and import the *data.csv* or you can directly import the cards I created to your anki app. In the latter case, you obviously don't have to run the script etc.
 
-## Would I do it again
+## Would I do it again?
 Big yes! Not only did I learn a lot more from implementing this idea compared to an assigned task, but also the stisfaction of finishing a personal project is worth it.
