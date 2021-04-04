@@ -11,8 +11,10 @@
 ---
 
 ## What is it?
-This is a web scraper designed to accumulate geographical, financial and social data about all sovereign countries from Wikipedia. This process follows two steps. First, a list of all countries and the links to their Wikipedia page is downloaded. Second, each Wikipedia page is visited individually to scrape previously defined features of a country. The data is used to create a geography quiz based on Anki flashcards.
+This is a web scraper designed to accumulate geographical, financial and social data about all sovereign countries from Wikipedia. This process follows two steps. First, a list of all countries and the links to their Wikipedia page is downloaded. Second, each Wikipedia page is visited individually (see left picture) to scrape previously defined features of a country. The data is used to create a geography quiz based on Anki flashcards (see right picture).
 
+![Screenshot website](https://github.com/mykingdomforapawn/webScraping/blob/main/media/screenshot_website.JPG)
+![Screenshot flashcard](https://github.com/mykingdomforapawn/webScraping/blob/main/media/screenshot_flashcard.JPG)
 
 ## Why did I do it?
 **The big picture:** To have an idea abouts what's going on in the world, it is absolutely necessary to know and compare geographical, financial and social facts about countries. Many conflicts, political movements and social changes can be explained with these numbers and maps.
