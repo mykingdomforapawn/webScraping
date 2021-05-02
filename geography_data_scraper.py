@@ -509,8 +509,62 @@ def process_exceptions(country_data, country_list, feature_list):
         None
     """
     country_data = process_exception_malaysia(country_data, feature_list)
+    #country_data = process_exception_usa(country_data, feature_list)
+    #country_data = process_exception_turkey(country_data, feature_list)
     country_data = process_exception_netherlands(
         country_data, country_list, feature_list)
+    return country_data
+
+
+def process_exception_turkey(country_data, feature_list):
+    """Process exeptions for turkey. The category of 'Religion' does not exist, therefore, the data has
+       to be scaped somewhere else.
+
+    Parameters:
+        country_data (pd.DataFrame): Data from the wikipedia infobox
+        feature_list (pd.DataFrame): Features to extract from the data
+
+    Returns:
+        country_data (pd.DataFrame): Data from the wikipedia infobox
+
+    Raises:
+        None
+    """
+
+    # soll gucken, ob turkey existiert in country_data
+    #   wenn ja, auf den entsprechenden anderen link (hardcode) gehen
+    #  daten da runterladen
+    # das in das feld hier schreiben
+
+    # gucken, ob die anderen exceptions nach ähnlichem Prínzip funktionieren
+    return country_data
+
+
+def process_exception_usa(country_data, feature_list):
+    """Process exeptions for the usa. The category of 'Religion' only has a link to
+       another website. The text should not be shown.
+
+    Parameters:
+        country_data (pd.DataFrame): Data from the wikipedia infobox
+        feature_list (pd.DataFrame): Features to extract from the data
+
+    Returns:
+        country_data (pd.DataFrame): Data from the wikipedia infobox
+
+    Raises:
+        None
+    """
+    url = 'https://en.wikipedia.org/wiki/United_States'
+    print("\n* Processing exceptions from {0}".format(url))
+
+    # soll gucken, ob usa existiert in country_data
+    #   wenn ja, auf den entsprechenden anderen link (hardcode) gehen
+    #  daten da runterladen
+    # das in das feld hier schreiben
+
+    if country_data[country_data['Country_name'] == 'United States – United States of America']['Official language'].str.contains('None').all():
+        country_data[country_data['Country_name'] ==
+                     'United States – United States of America']['Official language'] = ''
     return country_data
 
 
@@ -639,7 +693,7 @@ def test_single_url():
     feature_list = pd.read_csv('feature_list.csv', header=None)
 
     country_data = pd.DataFrame()
-    url = 'https://en.wikipedia.org/wiki/Abkhazia'
+    url = 'https://en.wikipedia.org/wiki/United_States'
     print("\n* Scraping country data from {0}".format(url))
     data = scrape_country_data(url, feature_list)
     data = clean_data(data)
@@ -652,5 +706,5 @@ def test_single_url():
 
 
 if __name__ == '__main__':
-    main()
-    # test_single_url()
+    # main()
+    test_single_url()
