@@ -10,77 +10,62 @@ import unicodedata2 as uc
 from bs4 import BeautifulSoup
 
 
-def scrape_country_list(url):
-    """Scrape url for a list of countries and their urls.
+def scrape_one_table(url, table_attributes):
+    """Scrape a specific table from a website.
 
     Parameters:
         url (str): Url to a page with a list of countries
+        table_attributes (dict): Specification of a table
 
     Returns:
-        country_list (pd.DataFrame): List of countries with urls to their wiki page
+        df (pd.DataFrame): Data from the table
 
     Raises:
         None
     """
+    data = []
+
+    # load page, get soup and extract specific table
     page = requests.get(url).text
     soup = BeautifulSoup(page, 'lxml')
-    table = soup.find(
-        'table', attrs={'class': 'sortable wikitable'})
-    header = get_country_list_header(table)
-    body = get_country_list_body(table)
-    country_list = pd.DataFrame(body, columns=header.iloc[:, 0])
-    return country_list
+    table = soup.find('table', attrs=table_attributes)
 
+    # find and iterate over table rows
+    table_rows = table.find_all('tr')
+    for table_row in table_rows:
 
-def get_country_list_header(table):
-    """Extract the table header from the soup.
+        # find and parse all links in the row
+        table_row_hrefs = table_row.find_all('a', href=True)
+        table_row_hrefs_parsed = [table_row_href.get(
+            'href') for table_row_href in table_row_hrefs]
 
-    Parameters:
-        soup (bs4.BeautifulSoup): The wikipedia table in html
-
-    Returns:
-        header (pd.DataFrame): Header of table for list of countries
-
-    Raises:
-        None
-    """
-    table_head = table.find_all('th')
-    header = pd.DataFrame(
-        [table_head_col.text for table_head_col in table_head])
-    header = header.append(pd.Series('url'), ignore_index=True)
-    header = clean_unwanted_characters(header)
-    header = clean_source_brackets(header)
-    return header
-
-
-def get_country_list_body(table):
-    """Extract the table body from the soup.
-
-    Parameters:
-        soup (bs4.BeautifulSoup): The wikipedia table in html
-
-    Returns:
-        body (pd.DataFrame): Body of table for list of countries
-
-    Raises:
-        None
-    """
-    table_body = table.find('tbody')
-    table_body_rows = table_body.find_all('tr')
-    body = []
-    for table_body_row in table_body_rows:
-        cols = table_body_row.find_all('td')
-        href = table_body_row.find('a', href=True)
-        none_rows = table_body_row.find_all(
+        # make all rows visible
+        table_cells_invisible = table_row.find_all(
             "span", style=re.compile("none"))
-        for _ in range(len(none_rows)):
-            table_body_row.find(
-                "span", style=re.compile("none")).decompose()
-        parsed_row = [col.text.strip() for col in cols]
-        if href and len(parsed_row) == 4 and '↓' not in str(parsed_row) and '↑' not in str(parsed_row):
-            parsed_href = ['https://en.wikipedia.org' + href.get('href')]
-            body.append(parsed_row + parsed_href)
-    return body
+        if len(table_cells_invisible) > 0:
+            table_row.find("span", style=re.compile("none")).decompose()
+
+        # find body or header table cells
+        if table_row.find_all('td'):
+            table_cells = table_row.find_all('td')
+        else:
+            table_cells = table_row.find_all('th')
+
+        # parse all text from cells in the row and append to list
+        table_row_text_parsed = [table_cell.text.strip()
+                                 for table_cell in table_cells]
+        data.append(table_row_text_parsed + [table_row_hrefs_parsed])
+
+    # convert nested list to df
+    df = pd.DataFrame(data)
+    return df
+
+
+def clean_one_table(df):
+
+    # if hrefs and len(parsed_row) == 4 and '↓' not in str(parsed_row) and '↑' not in str(parsed_row):
+    #    parsed_href = ['https://en.wikipedia.org' + href.get('href')]
+    return df
 
 
 def scrape_country_data(url, feature_list):
@@ -302,6 +287,8 @@ def clean_data(data):
     data = clean_bracket_spaces(data)
     data = clean_geographic_coordinates(data)
     data = clean_sorting_markers(data)
+    data = clean_constant_rows(data)
+    data = clean_sorting_rows(data)
     return data
 
 
@@ -420,6 +407,47 @@ def clean_sorting_markers(data):
     return data
 
 
+def clean_constant_rows(data):
+    """Drop rows with constant calues.
+
+    Parameters:
+        data (pd.DataFrame): Data from an html table
+    Returns:
+        data (pd.DataFrame): Data from an html table
+
+    Raises:
+        None
+    """
+    data = data.transpose()
+    data = data.loc[:, (data != data.iloc[0]).any()]
+    data = data.transpose().reset_index(drop=True)
+    return data
+
+
+def clean_sorting_rows(data):
+    """Drop rows that contain sorting characters.
+
+    Parameters:
+        data (pd.DataFrame): Data from an html table
+    Returns:
+        data (pd.DataFrame): Data from an html table
+
+    Raises:
+        None
+    """
+    data = data.transpose()
+    columns_with_up_arrow = [data[column].str.contains(
+        '↑').any() for column in data.columns]
+    columns_with_down_arrow = [data[column].str.contains(
+        '↓').any() for column in data.columns]
+    columns_to_drop = list(
+        map(any, zip(columns_with_up_arrow, columns_with_down_arrow)))
+    columns_to_keep = np.logical_not(columns_to_drop)
+    data = data.loc[:, columns_to_keep]
+    data = data.transpose().reset_index(drop=True)
+    return data
+
+
 def filter_data(data, feature_list):
     """Filter data for relevant features.
 
@@ -509,8 +537,8 @@ def process_exceptions(country_data, country_list, feature_list):
         None
     """
     country_data = process_exception_malaysia(country_data, feature_list)
-    #country_data = process_exception_usa(country_data, feature_list)
-    #country_data = process_exception_turkey(country_data, feature_list)
+    # country_data = process_exception_usa(country_data, feature_list)
+    # country_data = process_exception_turkey(country_data, feature_list)
     country_data = process_exception_netherlands(
         country_data, country_list, feature_list)
     return country_data
@@ -556,11 +584,6 @@ def process_exception_usa(country_data, feature_list):
     """
     url = 'https://en.wikipedia.org/wiki/United_States'
     print("\n* Processing exceptions from {0}".format(url))
-
-    # soll gucken, ob usa existiert in country_data
-    #   wenn ja, auf den entsprechenden anderen link (hardcode) gehen
-    #  daten da runterladen
-    # das in das feld hier schreiben
 
     if country_data[country_data['Country_name'] == 'United States – United States of America']['Official language'].str.contains('None').all():
         country_data[country_data['Country_name'] ==
@@ -705,6 +728,17 @@ def test_single_url():
     export_data(country_data)
 
 
+def test_case():
+    url = "https://en.wikipedia.org/wiki/List_of_sovereign_states"
+    table_attributes = {'class': 'sortable wikitable'}
+    df_country_list = scrape_one_table(url, table_attributes)
+    df_country_list = clean_one_table(df_country_list)
+    #country_list = test_scrape_county_list(country_list_url, table_attributes)
+    #country_list = clean_data(country_list)
+    print("hi")
+
+
 if __name__ == '__main__':
     # main()
-    test_single_url()
+    # test_single_url()
+    test_case()
