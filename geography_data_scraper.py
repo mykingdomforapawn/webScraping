@@ -14,9 +14,9 @@ def scrape_tables(url, table_attributes={}, display_none=False, append_links=Fal
     """Scrape tables from a website.
 
     Parameters:
-        url (str): Url to a page with a list of countries
-        table_attributes (dict): Specification to get specific tables
-        append_links (bool): Get links from each row and append them in an extra column
+        url (str): url of a website
+        table_attributes (dict): specification to get specific tables
+        append_links (bool): get links from each row and append them in an extra column
 
     Returns:
         table_container (list): list of pd.DataFrame object containing the table data
@@ -65,28 +65,30 @@ def scrape_tables(url, table_attributes={}, display_none=False, append_links=Fal
     return table_container
 
 
-def scrape_images(x, y, z):
-    df = 3
+def scrape_images(url):
+    """Scrape images from a website.
 
-    # hier auch wieder seite und dann optionale attr mitgeben
+    Parameters:
+        url (str): url to a website
 
-    return df
+    Returns:
+        image_container (list): list of pd.DataFrame object containing the table data
+
+    Raises:
+        None
+    """
+    image_container = None
+
+    return image_container
 
 
 def clean_tables(df_list):
-    # oben scrape tables nennen
-    # table_attr als optional mitgeben
-    # sucht alle tables, auf die das zutrifft, wenn nichts, dann halt alle, die gefunden werden
-    # gibt liste von dfs zurück mit tables und links an row immer angehangenn
-    # append links könnte man als attr auch mitgeben
 
     # hier über die parameter den ganzen Kram steuern, sodass es auf oerster ebene transparent isr
-
-    #
-
     # if hrefs and len(parsed_row) == 4 and '↓' not in str(parsed_row) and '↑' not in str(parsed_row):
     #    parsed_href = ['https://en.wikipedia.org' + href.get('href')]
-    return df
+
+    return df_list
 
 
 def scrape_country_data(url, feature_list):
@@ -708,45 +710,45 @@ def export_data(data):
 def main():
     country_list_url = "https://en.wikipedia.org/wiki/List_of_sovereign_states"
     print("\n* Scraping country list data from {0}".format(country_list_url))
-    country_list = scrape_country_list(country_list_url)
-    country_list = clean_data(country_list)
+    #country_list = scrape_country_list(country_list_url)
+    #country_list = clean_data(country_list)
 
-    print("\n* Reading feature list")
-    feature_list = pd.read_csv('feature_list.csv', header=None)
+    #print("\n* Reading feature list")
+    #feature_list = pd.read_csv('feature_list.csv', header=None)
 
-    country_data = pd.DataFrame()
-    for url in country_list['url']:
-        print("\n* Scraping country data from {0}".format(url))
-        data = scrape_country_data(url, feature_list)
-        data = clean_data(data)
-        data = filter_data(data, feature_list)
-        data = combine_data(country_list, data)
-        country_data = join_data(country_data, data)
-    country_data = process_exceptions(country_data, country_list, feature_list)
-    country_data = sort_data(country_data, feature_list)
-    export_data(country_data)
+    #country_data = pd.DataFrame()
+    # for url in country_list['url']:
+    #    print("\n* Scraping country data from {0}".format(url))
+    #    data = scrape_country_data(url, feature_list)
+    #    data = clean_data(data)
+    #    data = filter_data(data, feature_list)
+    #    data = combine_data(country_list, data)
+    #    country_data = join_data(country_data, data)
+    #country_data = process_exceptions(country_data, country_list, feature_list)
+    #country_data = sort_data(country_data, feature_list)
+    # export_data(country_data)
 
 
 def test_single_url():
     country_list_url = "https://en.wikipedia.org/wiki/List_of_sovereign_states"
     print("\n* Scraping country list data from {0}".format(country_list_url))
-    country_list = scrape_country_list(country_list_url)
-    country_list = clean_data(country_list)
+    #country_list = scrape_country_list(country_list_url)
+    #country_list = clean_data(country_list)
 
-    print("\n* Reading feature list")
-    feature_list = pd.read_csv('feature_list.csv', header=None)
+    #print("\n* Reading feature list")
+    #feature_list = pd.read_csv('feature_list.csv', header=None)
 
-    country_data = pd.DataFrame()
-    url = 'https://en.wikipedia.org/wiki/United_States'
-    print("\n* Scraping country data from {0}".format(url))
-    data = scrape_country_data(url, feature_list)
-    data = clean_data(data)
-    data = filter_data(data, feature_list)
-    data = combine_data(country_list, data)
-    country_data = join_data(country_data, data)
-    country_data = process_exceptions(country_data, country_list, feature_list)
-    country_data = sort_data(country_data, feature_list)
-    export_data(country_data)
+    #country_data = pd.DataFrame()
+    #url = 'https://en.wikipedia.org/wiki/United_States'
+    #print("\n* Scraping country data from {0}".format(url))
+    #data = scrape_country_data(url, feature_list)
+    #data = clean_data(data)
+    #data = filter_data(data, feature_list)
+    #data = combine_data(country_list, data)
+    #country_data = join_data(country_data, data)
+    #country_data = process_exceptions(country_data, country_list, feature_list)
+    #country_data = sort_data(country_data, feature_list)
+    # export_data(country_data)
 
 
 def test_scrape_tables():
