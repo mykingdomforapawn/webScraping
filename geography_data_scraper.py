@@ -88,6 +88,8 @@ def clean_tables(df_list):
     # if hrefs and len(parsed_row) == 4 and '↓' not in str(parsed_row) and '↑' not in str(parsed_row):
     #    parsed_href = ['https://en.wikipedia.org' + href.get('href')]
 
+    for i in range(3):
+        print("hello world")
     return df_list
 
 
