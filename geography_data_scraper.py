@@ -19,46 +19,50 @@ def scrape_tables(url, table_attributes={}, display_none=False, append_links=Fal
         append_links (bool): Get links from each row and append them in an extra column
 
     Returns:
-        tables (list): list of pd.DataFrame object containing the table data
+        table_container (list): list of pd.DataFrame object containing the table data
 
     Raises:
         None
     """
-    data = []
 
     # load page, get soup and extract specific table
     page = requests.get(url).text
     soup = BeautifulSoup(page, 'html5lib')
-    table = soup.find('table', attrs=table_attributes)
+    tables = soup.find_all('table', attrs=table_attributes)
+    table_container = []
 
-    # find and iterate over table rows
-    table_rows = table.find_all('tr')
-    for table_row in table_rows:
+    for table in tables:
+        data_container = []
 
-        # delete invisible cells before parsing the text
-        if not display_none:
-            table_cells_none = table_row.find_all(
-                "span", style=re.compile("none"))
-            for table_cell_none in table_cells_none:
-                table_cell_none.decompose()
+        # find and iterate over table rows
+        table_rows = table.find_all('tr')
+        for table_row in table_rows:
 
-        # find header/body cells and parse them
-        table_cells = table_row.find_all(["td", "th"])
-        table_row_parsed = [table_cell.text.strip()
-                            for table_cell in table_cells]
+            # delete invisible cells before parsing the text
+            if not display_none:
+                table_cells_none = table_row.find_all(
+                    "span", style=re.compile("none"))
+                for table_cell_none in table_cells_none:
+                    table_cell_none.decompose()
 
-        # find and parse all links in the row
-        if append_links:
-            table_row_hrefs = table_row.find_all('a', href=True)
-            table_row_parsed.append([table_row_href.get(
-                'href') for table_row_href in table_row_hrefs])
+            # find header/body cells and parse their text
+            table_cells = table_row.find_all(["td", "th"])
+            table_row_parsed = [table_cell.text.strip()
+                                for table_cell in table_cells]
 
-        # append parsed table row to data container
-        data.append(table_row_parsed)
+            # find and parse all links in the row
+            if append_links:
+                table_row_hrefs = table_row.find_all('a', href=True)
+                table_row_parsed.append([table_row_href.get(
+                    'href') for table_row_href in table_row_hrefs])
 
-    # convert nested list to df
-    df = pd.DataFrame(data)
-    return df
+            # append parsed table row to data container
+            data_container.append(table_row_parsed)
+
+        # convert nested list to dataframe and append to container
+        table_container.append(pd.DataFrame(data_container))
+
+    return table_container
 
 
 def scrape_images(x, y, z):
@@ -747,18 +751,16 @@ def test_single_url():
 
 def test_scrape_tables():
     url = "https://en.wikipedia.org/wiki/List_of_sovereign_states"
-    table_attributes = {'class': 'sortable wikitable'}
-    one_table = scrape_tables(url, table_attributes)
-    one_table_none = scrape_tables(url, table_attributes, display_none=True)
-    one_table_links = scrape_tables(url, table_attributes, append_links=True)
-    #all_tables = scrape_tables(url)
+    #table_attributes = {'class': 'sortable wikitable'}
+    #one_table = scrape_tables(url, table_attributes)
+    #one_table_none = scrape_tables(url, table_attributes, display_none=True)
+    #one_table_links = scrape_tables(url, table_attributes, append_links=True)
+
+    url = "https://en.wikipedia.org/wiki/Taiwan"
+    all_tables = scrape_tables(url)
 
     # klo
-    # branch auschecken
-    # hin und her wechseln testen
     # kleine änderung machen
-    # pr vs mr?
-    # das richtige davon machen
     # all tables umsetzen
     # tests schreiben auf einzelne felder, damit die sachen da nicht so rumhängen (ggfs mit framework?)
     print("hi")
