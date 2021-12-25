@@ -750,23 +750,48 @@ def test_single_url():
 
 
 def test_scrape_tables():
-    url = "https://en.wikipedia.org/wiki/List_of_sovereign_states"
-    #table_attributes = {'class': 'sortable wikitable'}
-    #one_table = scrape_tables(url, table_attributes)
-    #one_table_none = scrape_tables(url, table_attributes, display_none=True)
-    #one_table_links = scrape_tables(url, table_attributes, append_links=True)
+    url_1 = "https://en.wikipedia.org/wiki/List_of_sovereign_states"
+    url_2 = "https://en.wikipedia.org/wiki/Taiwan"
+    table_attributes = {'class': 'sortable wikitable'}
 
-    url = "https://en.wikipedia.org/wiki/Taiwan"
-    all_tables = scrape_tables(url)
+    # testcase: table with attributes, no display of invisible text, no parsing of links
+    tables = scrape_tables(url_1, table_attributes)
+    assert_data = 'The Bahamas is a Commonwealth realm.[f]'
+    test_data = tables[0].loc[16, 3]
+    assert test_data == assert_data, "Test expected '" + \
+        assert_data + "' but got '" + test_data + "'"
 
-    # klo
-    # kleine änderung machen
-    # all tables umsetzen
-    # tests schreiben auf einzelne felder, damit die sachen da nicht so rumhängen (ggfs mit framework?)
-    print("hi")
+    # testcase: table with attributes, with display of invisible text, no parsing of links
+    tables = scrape_tables(url_1, table_attributes, display_none=True)
+    assert_data = 'A AAA'
+    test_data = tables[0].loc[1, 0]
+    assert test_data == assert_data, "Test expected '" + \
+        assert_data + "' but got '" + test_data + "'"
+
+    # testcase: table with attributes, no display of invisible text, with parsing of links
+    tables = scrape_tables(url_1, table_attributes, append_links=True)
+    assert_data = '/wiki/United_Nations_System'
+    test_data = tables[0].loc[0, 4][0]
+    assert test_data == assert_data, "Test expected '" + \
+        assert_data + "' but got '" + test_data + "'"
+
+    # testcase: all tables from website, , no display of invisible text, no parsing of links
+    tables = scrape_tables(url_2)
+    assert_data = '2,809,004'
+    test_data = tables[3].loc[3, 3]
+    assert test_data == assert_data, "Test expected '" + \
+        assert_data + "' but got '" + test_data + "'"
+
+    print("scrape_tables() was tested successfully.")
+
+    # comitten auf branch
+    # unnötigen kram diablen
+    # comitten
+    # merge request
+    # im github mal anschauen
 
 
 if __name__ == '__main__':
+    test_scrape_tables()
     # main()
     # test_single_url()
-    test_scrape_tables()
