@@ -10,15 +10,16 @@ import unicodedata2 as uc
 from bs4 import BeautifulSoup
 
 
-def scrape_one_table(url, table_attributes):
-    """Scrape a specific table from a website.
+def scrape_tables(url, table_attributes={}, display_none=False, append_links=False):
+    """Scrape tables from a website.
 
     Parameters:
         url (str): Url to a page with a list of countries
-        table_attributes (dict): Specification of a table
+        table_attributes (dict): Specification to get specific tables
+        append_links (bool): Get links from each row and append them in an extra column
 
     Returns:
-        df (pd.DataFrame): Data from the table
+        tables (list): list of pd.DataFrame object containing the table data
 
     Raises:
         None
@@ -27,41 +28,59 @@ def scrape_one_table(url, table_attributes):
 
     # load page, get soup and extract specific table
     page = requests.get(url).text
-    soup = BeautifulSoup(page, 'lxml')
+    soup = BeautifulSoup(page, 'html5lib')
     table = soup.find('table', attrs=table_attributes)
 
     # find and iterate over table rows
     table_rows = table.find_all('tr')
     for table_row in table_rows:
 
-        # find and parse all links in the row
-        table_row_hrefs = table_row.find_all('a', href=True)
-        table_row_hrefs_parsed = [table_row_href.get(
-            'href') for table_row_href in table_row_hrefs]
+        # show invisible cells before parsing the text
+        if not display_none:
+            table_cells = table_row.find_all("span", style=re.compile("none"))
+            for table_cell in table_cells:
+                table_cell.decompose()
 
-        # make all rows visible
-        table_cells_invisible = table_row.find_all(
-            "span", style=re.compile("none"))
-        if len(table_cells_invisible) > 0:
-            table_row.find("span", style=re.compile("none")).decompose()
-
-        # find body or header table cells
+        # find body or header table cells and parse text
         if table_row.find_all('td'):
             table_cells = table_row.find_all('td')
         else:
             table_cells = table_row.find_all('th')
+        table_row_parsed = [table_cell.text.strip()
+                            for table_cell in table_cells]
 
-        # parse all text from cells in the row and append to list
-        table_row_text_parsed = [table_cell.text.strip()
-                                 for table_cell in table_cells]
-        data.append(table_row_text_parsed + [table_row_hrefs_parsed])
+        # find and parse all links in the row
+        if append_links:
+            table_row_hrefs = table_row.find_all('a', href=True)
+            table_row_parsed.append([table_row_href.get(
+                'href') for table_row_href in table_row_hrefs])
+
+        # append parsed table row to data container
+        data.append(table_row_parsed)
 
     # convert nested list to df
     df = pd.DataFrame(data)
     return df
 
 
-def clean_one_table(df):
+def scrape_images(x, y, z):
+    df = 3
+
+    # hier auch wieder seite und dann optionale attr mitgeben
+
+    return df
+
+
+def clean_tables(df_list):
+    # oben scrape tables nennen
+    # table_attr als optional mitgeben
+    # sucht alle tables, auf die das zutrifft, wenn nichts, dann halt alle, die gefunden werden
+    # gibt liste von dfs zurück mit tables und links an row immer angehangenn
+    # append links könnte man als attr auch mitgeben
+
+    # hier über die parameter den ganzen Kram steuern, sodass es auf oerster ebene transparent isr
+
+    #
 
     # if hrefs and len(parsed_row) == 4 and '↓' not in str(parsed_row) and '↑' not in str(parsed_row):
     #    parsed_href = ['https://en.wikipedia.org' + href.get('href')]
@@ -728,17 +747,27 @@ def test_single_url():
     export_data(country_data)
 
 
-def test_case():
+def test_scrape_tables():
     url = "https://en.wikipedia.org/wiki/List_of_sovereign_states"
     table_attributes = {'class': 'sortable wikitable'}
-    df_country_list = scrape_one_table(url, table_attributes)
-    df_country_list = clean_one_table(df_country_list)
-    #country_list = test_scrape_county_list(country_list_url, table_attributes)
-    #country_list = clean_data(country_list)
+    one_table = scrape_tables(url, table_attributes)
+    one_table_none = scrape_tables(url, table_attributes, display_none=True)
+    one_table_links = scrape_tables(url, table_attributes, append_links=True)
+    #all_tables = scrape_tables(url)
+
+    # pushen
+    # klo
+    # branch auschecken
+    # hin und her wechseln testen
+    # kleine änderung machen
+    # pr vs mr?
+    # das richtige davon machen
+    # all tables umsetzen
+    # tests schreiben auf einzelne felder, damit die sachen da nicht so rumhängen (ggfs mit framework?)
     print("hi")
 
 
 if __name__ == '__main__':
     # main()
     # test_single_url()
-    test_case()
+    test_scrape_tables()
