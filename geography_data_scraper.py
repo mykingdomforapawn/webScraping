@@ -89,7 +89,9 @@ def clean_tables(df_list):
     #    parsed_href = ['https://en.wikipedia.org' + href.get('href')]
 
     for i in range(3):
-        print("hello world")
+        print("hello")
+
+    print("world")
     return df_list
 
 
