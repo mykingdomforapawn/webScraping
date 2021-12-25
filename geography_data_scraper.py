@@ -35,17 +35,15 @@ def scrape_tables(url, table_attributes={}, display_none=False, append_links=Fal
     table_rows = table.find_all('tr')
     for table_row in table_rows:
 
-        # show invisible cells before parsing the text
+        # delete invisible cells before parsing the text
         if not display_none:
-            table_cells = table_row.find_all("span", style=re.compile("none"))
-            for table_cell in table_cells:
-                table_cell.decompose()
+            table_cells_none = table_row.find_all(
+                "span", style=re.compile("none"))
+            for table_cell_none in table_cells_none:
+                table_cell_none.decompose()
 
-        # find body or header table cells and parse text
-        if table_row.find_all('td'):
-            table_cells = table_row.find_all('td')
-        else:
-            table_cells = table_row.find_all('th')
+        # find header/body cells and parse them
+        table_cells = table_row.find_all(["td", "th"])
         table_row_parsed = [table_cell.text.strip()
                             for table_cell in table_cells]
 
@@ -755,7 +753,6 @@ def test_scrape_tables():
     one_table_links = scrape_tables(url, table_attributes, append_links=True)
     #all_tables = scrape_tables(url)
 
-    # pushen
     # klo
     # branch auschecken
     # hin und her wechseln testen
