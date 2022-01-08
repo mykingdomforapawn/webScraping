@@ -25,12 +25,14 @@ def scrape_tables(url, table_attributes={}, display_none=False, append_links=Fal
         None
     """
 
-    # load page, get soup and extract specific table
-    page = requests.get(url).text
-    soup = BeautifulSoup(page, 'html5lib')
-    tables = soup.find_all('table', attrs=table_attributes)
     table_container = []
 
+    # load page and get soup
+    page = requests.get(url).text
+    soup = BeautifulSoup(page, 'html5lib')
+
+    # find and iterate over tables
+    tables = soup.find_all('table', attrs=table_attributes)
     for table in tables:
         data_container = []
 
@@ -789,12 +791,6 @@ def test_scrape_tables():
         assert_data + "' but got '" + test_data + "'"
 
     print("scrape_tables() was tested successfully.")
-
-    # comitten auf branch
-    # unnötigen kram diablen
-    # comitten
-    # merge request
-    # im github mal anschauen
 
 
 if __name__ == '__main__':
