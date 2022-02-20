@@ -9,13 +9,18 @@ import requests
 import unicodedata2 as uc
 from bs4 import BeautifulSoup
 
+# could add this to get a more robust code
+# if result.status_code == 200:
+#    soup = BeautifulSoup(result.content, "html.parser")
+
 
 def scrape_tables(url, table_attributes={}, display_none=False, append_links=False):
-    """Scrape tables from a website.
+    """Scrape tables from a static website.
 
     Parameters:
         url (str): url of a website
-        table_attributes (dict): specification to get specific tables
+        table_attributes (dict): specification to get particular tables
+        display_none (bool): get data that is hidden on the website
         append_links (bool): get links from each row and append them in an extra column
 
     Returns:
@@ -25,6 +30,7 @@ def scrape_tables(url, table_attributes={}, display_none=False, append_links=Fal
         None
     """
 
+    # set up a result container
     table_container = []
 
     # load page and get soup
@@ -67,21 +73,45 @@ def scrape_tables(url, table_attributes={}, display_none=False, append_links=Fal
     return table_container
 
 
-def scrape_images(url):
-    """Scrape images from a website.
+def scrape_images(url, image_attributes={}):
+    """Scrape images from a static website.
 
     Parameters:
         url (str): url to a website
+        image_attributes (dict): specification to get particular images
 
     Returns:
-        image_container (list): list of pd.DataFrame object containing the table data
+        image_container (pd.DataFrame): dataframe containing the image data
 
     Raises:
         None
     """
-    image_container = None
+
+    # set up a result container
+    image_container = []
+
+    # load page and get soup
+    page = requests.get(url).text
+    soup = BeautifulSoup(page, 'html5lib')
+
+    # find and iterate over images
+    image_tags = soup.find_all('img', attrs=image_attributes)
+    for image_tag in image_tags:
+
+        # get image attributes as dict and add it to the result container
+        image_container.append(image_tag.attrs)
+
+    # transform result container into dataframe
+    image_container = pd.DataFrame(image_container)
 
     return image_container
+
+
+def scrape_links(url, link_attributes={}):
+
+    link_container = []
+
+    return link_container
 
 
 def clean_tables(df_list):
@@ -783,7 +813,7 @@ def test_scrape_tables():
     assert test_data == assert_data, "Test expected '" + \
         assert_data + "' but got '" + test_data + "'"
 
-    # testcase: all tables from website, , no display of invisible text, no parsing of links
+    # testcase: all tables from website, no display of invisible text, no parsing of links
     tables = scrape_tables(url_2)
     assert_data = '2,809,004'
     test_data = tables[3].loc[3, 3]
@@ -793,7 +823,29 @@ def test_scrape_tables():
     print("scrape_tables() was tested successfully.")
 
 
+def test_scrape_images():
+    url_1 = "https://en.wikipedia.org/wiki/France"
+    image_attributes = {'alt': 'Flag of France'}
+
+    # testcase: image with attributes
+    images = scrape_images(url_1, image_attributes)
+    assert_data = 'Flag of France'
+    test_data = images.loc[0][0]
+    assert test_data == assert_data, "Test expected '" + \
+        assert_data + "' but got '" + test_data + "'"
+
+    # testcase: all images from website
+    images = scrape_images(url_1)
+    assert_data = 'EU-France (orthographic projection).svg'
+    test_data = images.loc[3][0]
+    assert test_data == assert_data, "Test expected '" + \
+        assert_data + "' but got '" + test_data + "'"
+
+    print("scrape_images() was tested successfully.")
+
+
 if __name__ == '__main__':
     test_scrape_tables()
+    test_scrape_images()
     # main()
     # test_single_url()
