@@ -13,6 +13,11 @@ from bs4 import BeautifulSoup
 # if result.status_code == 200:
 #    soup = BeautifulSoup(result.content, "html.parser")
 
+# als nächstes die links scrapen
+# dann projekt umbennenen in staic_website_scraper, bzw. neues projekt und das rüber kopieren
+# dann neues projekt, wo das auf die wiki seiten angewendet wird
+# kann den namen hier behalten
+
 
 def scrape_tables(url, table_attributes={}, display_none=False, append_links=False):
     """Scrape tables from a static website.
@@ -107,9 +112,41 @@ def scrape_images(url, image_attributes={}):
     return image_container
 
 
-def scrape_links(url, link_attributes={}):
+def scrape_links(url, link_attributes={}, absolute_paths=False):
+    """Scrape links from a static website.
 
+    Parameters:
+        url (str): url to a website
+        link_attributes (dict): specification to get particular links
+
+    Returns:
+        link_container (pd.DataFrame): dataframe containing the link data
+
+    Raises:
+        None
+    """
+
+    # set up a result container
     link_container = []
+
+    # load page and get soup
+    page = requests.get(url).text
+    soup = BeautifulSoup(page, 'html5lib')
+
+    # find and iterate over images
+    link_tags = soup.find_all('a', attrs=link_attributes, href=True)
+    for link_tag in link_tags:
+
+        # get image attributes as dict and add it to the result container
+        link_container.append(link_tag.attrs)
+
+    # transform result container into dataframe
+    link_container = pd.DataFrame(link_container)
+
+    # add base url to relative hrefs in links
+    if absolute_paths == True and 'href' in link_container:
+        link_container['href'] = link_container['href'].apply(
+            lambda x: urllib.parse.urljoin(url, x))
 
     return link_container
 
@@ -824,18 +861,18 @@ def test_scrape_tables():
 
 
 def test_scrape_images():
-    url_1 = "https://en.wikipedia.org/wiki/France"
+    url = "https://en.wikipedia.org/wiki/France"
     image_attributes = {'alt': 'Flag of France'}
 
     # testcase: image with attributes
-    images = scrape_images(url_1, image_attributes)
+    images = scrape_images(url, image_attributes)
     assert_data = 'Flag of France'
     test_data = images.loc[0][0]
     assert test_data == assert_data, "Test expected '" + \
         assert_data + "' but got '" + test_data + "'"
 
     # testcase: all images from website
-    images = scrape_images(url_1)
+    images = scrape_images(url)
     assert_data = 'EU-France (orthographic projection).svg'
     test_data = images.loc[3][0]
     assert test_data == assert_data, "Test expected '" + \
@@ -844,8 +881,37 @@ def test_scrape_images():
     print("scrape_images() was tested successfully.")
 
 
+def test_scrape_links():
+    url = "https://en.wikipedia.org/wiki/Papua_New_Guinea"
+    link_attributes = {'title': 'New Guinea'}
+
+    # testcase: link with attributes, no absolute paths
+    links = scrape_links(url, link_attributes)
+    assert_data = '/wiki/New_Guinea'
+    test_data = links.loc[0][0]
+    assert test_data == assert_data, "Test expected '" + \
+        assert_data + "' but got '" + test_data + "'"
+
+    # testcase: link with attributes, with absolute paths
+    links = scrape_links(url, link_attributes, absolute_paths=True)
+    assert_data = 'https://en.wikipedia.org/wiki/New_Guinea'
+    test_data = links.loc[0][0]
+    assert test_data == assert_data, "Test expected '" + \
+        assert_data + "' but got '" + test_data + "'"
+
+    # testcase: all links from website
+    links = scrape_links(url, absolute_paths=True)
+    assert_data = 'Papua (disambiguation)'
+    test_data = links.loc[4][2]
+    assert test_data == assert_data, "Test expected '" + \
+        assert_data + "' but got '" + test_data + "'"
+
+    print("scrape_links() was tested successfully.")
+
+
 if __name__ == '__main__':
     test_scrape_tables()
     test_scrape_images()
+    test_scrape_links()
     # main()
     # test_single_url()
