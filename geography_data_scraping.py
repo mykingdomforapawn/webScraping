@@ -9,8 +9,10 @@ import requests
 import unicodedata2 as uc
 from bs4 import BeautifulSoup
 
-# dann neues projekt, wo das auf die wiki seiten angewendet wird
-# kann den namen hier behalten
+# next todos
+# hier ein script schreiben, dass die anderen Sachen implementiert
+# prüfen, ob man die anderen module benutzen kann
+# ggfs. cleaning modul einbauen
 
 
 def clean_tables(df_list):
