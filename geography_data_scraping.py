@@ -9,10 +9,6 @@ import requests
 import unicodedata2 as uc
 from bs4 import BeautifulSoup
 
-# could add this to get a more robust code
-# if result.status_code == 200:
-#    soup = BeautifulSoup(result.content, "html.parser")
-
 # dann neues projekt, wo das auf die wiki seiten angewendet wird
 # kann den namen hier behalten
 
