@@ -19,11 +19,15 @@ def scrape_tables(url, table_attributes={}, display_none=False, append_links=Fal
         table_container (list): list of pd.DataFrame object containing the table data
 
     Raises:
-        None
+        ValueError: if url is not valid
     """
 
     # set up a result container
     table_container = []
+
+    # check response code when of the url
+    if requests.get(url).status_code != 200:
+        raise ValueError("url is not valid")
 
     # load page and get soup
     page = requests.get(url).text
@@ -77,10 +81,16 @@ def scrape_images(url, image_attributes={}):
 
     Raises:
         None
+
+    ValueError: if url is not valid
     """
 
     # set up a result container
     image_container = []
+
+    # check response code when of the url
+    if requests.get(url).status_code != 200:
+        raise ValueError("url is not valid")
 
     # load page and get soup
     page = requests.get(url).text
@@ -110,11 +120,15 @@ def scrape_links(url, link_attributes={}, absolute_paths=False):
         link_container (pd.DataFrame): dataframe containing the link data
 
     Raises:
-        None
+        ValueError: if url is not valid
     """
 
     # set up a result container
     link_container = []
+
+    # check response code when of the url
+    if requests.get(url).status_code != 200:
+        raise ValueError("url is not valid")
 
     # load page and get soup
     page = requests.get(url).text
