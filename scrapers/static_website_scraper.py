@@ -201,7 +201,7 @@ def test_scrape_images():
 
     # testcase: all images from website
     images = scrape_images(url)
-    assert_data = 'EU-France (orthographic projection).svg'
+    assert_data = 'France in the World (+Antarctica claims).svg'
     test_data = images.loc[3][0]
     assert test_data == assert_data, "Test expected '" + \
         assert_data + "' but got '" + test_data + "'"
