@@ -5,7 +5,9 @@ import pandas as pd
 import cleaners.string_cleaner as sc
 import scrapers.static_website_scraper as sws
 
-# TODO doku in dieses file einfügen
+# TODO Preview auf ; umstellen, damit man das lesen kann
+# TODO Leere rows löschen
+# TODO references löschen
 
 
 def get_states_list():
@@ -42,7 +44,7 @@ def get_states_list():
         " - " + scraped_table.iloc[1:, 3]
 
     # clean dataframe
-    df = sc.delete_rows_with(df, columns=['name'], strings=['↓', '↑'])
+    df = sc.delete_rows_with(df, columns=['name'], strings=['↓', '↑', '→'])
 
     print('hello there')
 
@@ -50,12 +52,9 @@ def get_states_list():
 
 
 def main():
-    tab = get_states_list()
-
-    # get links in
-    # get list if states mit links in spalte 1
-    # links 2
-    # sov dispute 3
+    df = get_states_list()
+    df.to_csv('data/export.csv', header=False, index=False, sep=';')
+    print(df.iloc[1])
 
 
 if __name__ == '__main__':
