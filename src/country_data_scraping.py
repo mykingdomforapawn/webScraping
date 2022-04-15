@@ -2,7 +2,7 @@ import warnings
 
 import pandas as pd
 
-import scrapers.static_website_scraper as sws
+import src.static_website_scraper as sws
 
 # TODO schauen, dass die files eine struktur bekommen
 # TODO doku in dieses file einfügen
