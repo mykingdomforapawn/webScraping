@@ -5,9 +5,8 @@ import pandas as pd
 import cleaners.string_cleaner as sc
 import scrapers.static_website_scraper as sws
 
-# TODO Preview auf ; umstellen, damit man das lesen kann
-# TODO Leere rows löschen
 # TODO references löschen
+# TODO - hinter manchen severeignity löschen
 
 
 def get_states_list():
@@ -45,6 +44,9 @@ def get_states_list():
 
     # clean dataframe
     df = sc.delete_rows_with(df, columns=['name'], strings=['↓', '↑', '→'])
+    df = sc.delete_blank_rows(
+        df, columns=['name'], dropNa=True, dropEmpty=True)
+    df.dropna(subset=['name'], inplace=True)
 
     print('hello there')
 
@@ -54,6 +56,7 @@ def get_states_list():
 def main():
     df = get_states_list()
     df.to_csv('data/export.csv', header=False, index=False, sep=';')
+    print(df.head())
     print(df.iloc[1])
 
 
