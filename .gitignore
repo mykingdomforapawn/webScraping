@@ -130,3 +130,5 @@ dmypy.json
 
 # my stuff
 .vscode/
+data/export.csv
+archive/
