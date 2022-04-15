@@ -2,11 +2,11 @@ import warnings
 
 import pandas as pd
 
-import src.static_website_scraper as sws
+import cleaners.string_cleaner as sc
+import scrapers.static_website_scraper as sws
 
-# TODO schauen, dass die files eine struktur bekommen
 # TODO doku in dieses file einfügen
-# TODO
+# TODOsr
 
 
 def get_states_list():
@@ -31,9 +31,10 @@ def get_states_list():
     df['sovereignityDispute'] = scraped_table.iloc[1:, 2] + \
         " - " + scraped_table.iloc[1:, 3]
 
-    # clean table
-    # filter relevant rows
-    # die mit dem pfeil rausfiltern
+    # clean dataframe
+    df = sc.delete_rows_with(df, columns=['name'], strings=['↓', '↑'])
+
+    print('hello there')
 
     return df
 
