@@ -1,6 +1,12 @@
 import warnings
 
-import static_website_scraper as sws
+import pandas as pd
+
+import scrapers.static_website_scraper as sws
+
+# TODO schauen, dass die files eine struktur bekommen
+# TODO doku in dieses file einfügen
+# TODO
 
 
 def get_states_list():
@@ -15,24 +21,21 @@ def get_states_list():
         raise ValueError('no table found. adjust url or table attributes.')
     elif len(scraped_table) != 1:
         warnings.warn(
-            'more than one table found. first one was selected. adjust table attributes')
+            'more than one table found. first one was selected. adjust table attributes.')
     scraped_table = scraped_table[0]
 
-    # set column names
-    # hier neuen df aufsetzen mit column names und richtigem row index
+    # set up dataframe to collect data
+    df = pd.DataFrame()
+    df['name'] = scraped_table.iloc[1:, 0]
+    df['links'] = scraped_table.iloc[1:, 4]
+    df['sovereignityDispute'] = scraped_table.iloc[1:, 2] + \
+        " - " + scraped_table.iloc[1:, 3]
 
-    # filter relevant columns
-    relevant_columns = ['Common and formal names', 'Sovereignty dispute',
-                        'Further information on status and recognition of sovereignty']
-    # damit dann df it nur den dreien
-    # dann schauen, dass das über config datei ingelesen wird
-
+    # clean table
     # filter relevant rows
     # die mit dem pfeil rausfiltern
 
-    # TODO:schauen, dass die files eine struktur bekommen
-
-    return scraped_table
+    return df
 
 
 def main():
