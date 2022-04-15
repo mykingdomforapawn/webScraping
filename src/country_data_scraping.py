@@ -6,10 +6,20 @@ import cleaners.string_cleaner as sc
 import scrapers.static_website_scraper as sws
 
 # TODO doku in dieses file einfügen
-# TODOsr
 
 
 def get_states_list():
+    """Scrape a list of states from Wikipedia.
+
+    Parameters:
+        None
+
+    Returns:
+        data (pd.DataFrame): Dataframe 
+
+    Raises:
+        None
+    """
     # scrapte table of states
     scraped_table = sws.scrape_tables(
         url="https://en.wikipedia.org/wiki/List_of_sovereign_states",
@@ -24,7 +34,7 @@ def get_states_list():
             'more than one table found. first one was selected. adjust table attributes.')
     scraped_table = scraped_table[0]
 
-    # set up dataframe to collect data
+    # set up dataframe with selected data
     df = pd.DataFrame()
     df['name'] = scraped_table.iloc[1:, 0]
     df['links'] = scraped_table.iloc[1:, 4]
@@ -41,6 +51,7 @@ def get_states_list():
 
 def main():
     tab = get_states_list()
+
     # get links in
     # get list if states mit links in spalte 1
     # links 2
