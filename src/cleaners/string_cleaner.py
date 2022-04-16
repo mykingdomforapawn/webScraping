@@ -56,12 +56,25 @@ def delete_blank_rows(df, columns, dropNa=True, dropEmpty=True):
     return df
 
 
-def replace_substring(df, columns, searchString=[""], replaceString=[""]):
+def replace_substring(df, columns, searchStrings=[""], replaceStrings=[""]):
+    """Search and replace a substring in each cell.
 
+    Parameters:
+        df (pd.DataFrame): Dataframe
+        columns (list): Names of columns to search in
+        searchStrings (list): Strings to search for
+        dreplaceStrings (list): Strings to replace them with
+
+    Returns:
+        data (pd.DataFrame): Dataframe
+
+    Raises:
+        None
+    """
     # search dataframe for strings and replace them
-    for index in range(len(searchString)):
+    for index in range(len(searchStrings)):
         df[columns] = df[columns].applymap(
-            lambda x: re.sub(searchString[index], replaceString[index], str(x)))
+            lambda x: re.sub(searchStrings[index], replaceStrings[index], str(x)))
     return df
 
 
