@@ -39,25 +39,38 @@ def get_states_list():
     df['sovereignityDispute'] = scraped_table.iloc[1:, 2] + \
         " - " + scraped_table.iloc[1:, 3]
 
+    # select the first link for each row
+    for index in range(df.shape[0]):
+        df['links'].iloc[index] = df['links'].iloc[index][0]
+
     # clean dataframe
     df = sc.delete_rows_with_substring(
         df, columns=['name'], strings=['↓', '↑', '→'])
     df = sc.delete_blank_rows(
         df, columns=['name'], dropNa=True, dropEmpty=True)
     df.dropna(subset=['name'], inplace=True)
-    df = sc.replace_substring(df, columns=['name', 'sovereignityDispute'], searchString=[
-        "[\[].*?[\]]", " - $"], replaceString=["", ""])
-
-    print('hello there')
+    df = sc.replace_substring(df, columns=['name', 'sovereignityDispute'], searchStrings=[
+        "[\[].*?[\]]", " - $"], replaceStrings=["", ""])
 
     return df
 
 
+def get_country_data(links):
+
+    # hier liste an links eingen
+    # sucht dann die daten und fügt sie an
+    # das geht zurück und über die links werden dann die df s gematched
+    pass
+
+
 def main():
     df = get_states_list()
+    df_2 = get_country_data(df['links'])
     df.to_csv('data/export.csv', header=False, index=False, sep=';')
+
     print(df.head())
-    print(df.iloc[1])
+    print(df.iloc[10])
+    print[df['links'].iloc[10][0]]
 
 
 if __name__ == '__main__':
