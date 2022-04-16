@@ -43,10 +43,13 @@ def get_states_list():
         " - " + scraped_table.iloc[1:, 3]
 
     # clean dataframe
-    df = sc.delete_rows_with(df, columns=['name'], strings=['↓', '↑', '→'])
+    df = sc.delete_rows_with_substring(
+        df, columns=['name'], strings=['↓', '↑', '→'])
     df = sc.delete_blank_rows(
         df, columns=['name'], dropNa=True, dropEmpty=True)
     df.dropna(subset=['name'], inplace=True)
+    df = sc.replace_substring(df, columns=['name', 'sovereignityDispute'], searchString=[
+        "[\[].*?[\]]"], replaceString=[""])
 
     print('hello there')
 
