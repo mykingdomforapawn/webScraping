@@ -1,4 +1,7 @@
-def delete_rows_with(df, columns, strings=['']):
+import re
+
+
+def delete_rows_with_substring(df, columns, strings=['']):
     """Drop rows that contain certain strings.
 
     Parameters:
@@ -39,11 +42,13 @@ def delete_blank_rows(df, columns, dropNa=True, dropEmpty=True):
         None
     """
     # drop missing values
-    df.dropna(subset=columns, inplace=True)
+    if dropNa:
+        df.dropna(subset=columns, inplace=True)
 
     # drop empty strings
-    for column in columns:
-        df = df[~(df[column] == '')]
+    if dropEmpty:
+        for column in columns:
+            df = df[~(df[column] == '')]
 
     # reset index
     df.reset_index(drop=True, inplace=True)
@@ -51,8 +56,13 @@ def delete_blank_rows(df, columns, dropNa=True, dropEmpty=True):
     return df
 
 
-def delete_substrings(df, string='', regex=''):
-    pass
+def replace_substring(df, columns, searchString="", replaceString=""):
+
+    # search dataframe for strings and replace them
+    for column in columns:
+        df[column] = df[column].applymap(
+            lambda x: re.sub(searchString, replaceString, x))
+    return df
 
 
 def replace_substrings():
