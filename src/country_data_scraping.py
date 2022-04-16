@@ -5,9 +5,6 @@ import pandas as pd
 import cleaners.string_cleaner as sc
 import scrapers.static_website_scraper as sws
 
-# TODO references löschen
-# TODO - hinter manchen severeignity löschen
-
 
 def get_states_list():
     """Scrape a list of states from Wikipedia.
@@ -49,7 +46,7 @@ def get_states_list():
         df, columns=['name'], dropNa=True, dropEmpty=True)
     df.dropna(subset=['name'], inplace=True)
     df = sc.replace_substring(df, columns=['name', 'sovereignityDispute'], searchString=[
-        "[\[].*?[\]]"], replaceString=[""])
+        "[\[].*?[\]]", " - $"], replaceString=["", ""])
 
     print('hello there')
 
