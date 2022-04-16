@@ -1,9 +1,13 @@
 import warnings
+from locale import currency
 
 import pandas as pd
 
 import cleaners.string_cleaner as sc
 import scrapers.static_website_scraper as sws
+
+# TODO: Bisschen Logging Nachrichten
+# TODO: bei hier weiter machen: geokoordinaten beim capital rausnehmen
 
 
 def get_states_list():
@@ -19,18 +23,18 @@ def get_states_list():
         None
     """
     # scrapte table of states
-    scraped_table = sws.scrape_tables(
+    scraped_tables = sws.scrape_tables(
         url="https://en.wikipedia.org/wiki/List_of_sovereign_states",
         table_attributes={'class': 'sortable wikitable'},
         append_links=True)
 
     # check validity of scraped table
-    if len(scraped_table) == 0:
+    if len(scraped_tables) == 0:
         raise ValueError('no table found. adjust url or table attributes.')
-    elif len(scraped_table) != 1:
+    elif len(scraped_tables) != 1:
         warnings.warn(
             'more than one table found. first one was selected. adjust table attributes.')
-    scraped_table = scraped_table[0]
+    scraped_table = scraped_tables[0]
 
     # set up dataframe with selected data
     df = pd.DataFrame()
@@ -38,10 +42,6 @@ def get_states_list():
     df['links'] = scraped_table.iloc[1:, 4]
     df['sovereignityDispute'] = scraped_table.iloc[1:, 2] + \
         " - " + scraped_table.iloc[1:, 3]
-
-    # select the first link for each row
-    for index in range(df.shape[0]):
-        df['links'].iloc[index] = df['links'].iloc[index][0]
 
     # clean dataframe
     df = sc.delete_rows_with_substring(
@@ -52,14 +52,59 @@ def get_states_list():
     df = sc.replace_substring(df, columns=['name', 'sovereignityDispute'], searchStrings=[
         "[\[].*?[\]]", " - $"], replaceStrings=["", ""])
 
+    # select the first link and add domain name
+    for index in range(df.shape[0]):
+        df['links'].iloc[index] = "https://en.wikipedia.org/" + \
+            df['links'].iloc[index][0]
+
     return df
 
 
 def get_country_data(links):
 
+    for index in range(links.shape[0]):
+        # scrapte tables of specific country
+        scraped_tables = sws.scrape_tables(
+            url=links.iloc[index],
+            table_attributes={'class': 'infobox'},
+            append_links=True)
+
+        # check validity of scraped table
+        if len(scraped_tables) == 0:
+            raise ValueError('no table found. adjust url or table attributes.')
+        elif len(scraped_tables) != 1:
+            warnings.warn(
+                'more than one table found. first one was selected. adjust table attributes.')
+        scraped_table = scraped_tables[0]
+
+        # set up dataframe with selected data
+        df_country = pd.DataFrame()
+        df_country['link'] = links.iloc[index]
+
+        # hier weiter
+
+        #df3 = scraped_table[scraped_table.iloc[:, 0].str.contains('Capital')]
+
+        #df['links'] = scraped_table.iloc[1:, 4]
+        # df['sovereignityDispute'] = scraped_table.iloc[1:, 2] + \
+        #    " - " + scraped_table.iloc[1:, 3]
+        # capital and largest city
+        # area total
+        # population total
+        # religion
+        # language
+        # currency
+
+        print('jamoin')
+    # scrapte table of states
+
     # hier liste an links eingen
     # sucht dann die daten und fügt sie an
     # das geht zurück und über die links werden dann die df s gematched
+    pass
+
+
+def get_country_flags(links):
     pass
 
 
