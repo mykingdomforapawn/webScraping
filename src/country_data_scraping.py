@@ -1,4 +1,5 @@
 import warnings
+from difflib import SequenceMatcher
 from locale import currency
 
 import pandas as pd
@@ -10,7 +11,7 @@ import scrapers.static_website_scraper as sws
 # TODO: bei hier weiter machen: geokoordinaten beim capital rausnehmen
 
 
-def get_states_list():
+def get_country_list():
     """Scrape a list of states from Wikipedia.
 
     Parameters:
@@ -60,7 +61,7 @@ def get_states_list():
     return df
 
 
-def get_country_data(links):
+def get_country_attributes(links, attributes):
 
     for index in range(links.shape[0]):
         # scrapte tables of specific country
@@ -81,6 +82,23 @@ def get_country_data(links):
         df_country = pd.DataFrame()
         df_country['link'] = links.iloc[index]
 
+        # search for pre-defined attributes
+        for attribute in attributes:
+            attribute_table = scraped_table[scraped_table.iloc[:, 0].str.contains(
+                attribute, case=False)]
+            if attribute_table.shape[0] == 0:
+                raise ValueError('error 1.')
+            elif attribute_table.shape[0] != 1:
+                warnings.warn(
+                    'error 2')
+            # hier weiter
+            # neuer tabelle mit column = attr hinzufügen und dann den wert da rein
+            #
+            print('hihi')
+            # attribute_table.iloc[0, 1]
+
+            # die tab einer gesamttab hinzufügen, sodass die sich langsam aufbaut, oder als dict?
+        print('hi')
         # hier weiter
 
         #df3 = scraped_table[scraped_table.iloc[:, 0].str.contains('Capital')]
@@ -88,7 +106,9 @@ def get_country_data(links):
         #df['links'] = scraped_table.iloc[1:, 4]
         # df['sovereignityDispute'] = scraped_table.iloc[1:, 2] + \
         #    " - " + scraped_table.iloc[1:, 3]
-        # capital and largest city
+
+        # capital
+        # largest city
         # area total
         # population total
         # religion
@@ -109,8 +129,10 @@ def get_country_flags(links):
 
 
 def main():
-    df = get_states_list()
-    df_2 = get_country_data(df['links'])
+    df = get_country_list()
+    attributes = ['capital', 'largest city', 'currency']
+    # area total, population total, religion, language, currency
+    df_2 = get_country_attributes(df['links'], attributes)
     df.to_csv('data/export.csv', header=False, index=False, sep=';')
 
     print(df.head())
