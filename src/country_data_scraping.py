@@ -11,7 +11,7 @@ import scrapers.static_website_scraper as sws
 # TODO: bei hier weiter machen: geokoordinaten beim capital rausnehmen
 
 
-def get_country_list():
+def get_states_list():
     """Scrape a list of states from Wikipedia.
 
     Parameters:
@@ -23,6 +23,9 @@ def get_country_list():
     Raises:
         None
     """
+    # write status to console
+    print("started: get_states_list()")
+
     # scrapte table of states
     scraped_tables = sws.scrape_tables(
         url="https://en.wikipedia.org/wiki/List_of_sovereign_states",
@@ -57,6 +60,9 @@ def get_country_list():
     for index in range(df.shape[0]):
         df['links'].iloc[index] = "https://en.wikipedia.org/" + \
             df['links'].iloc[index][0]
+
+    # write status to console
+    print("finished: get_states_list()")
 
     return df
 
@@ -129,7 +135,7 @@ def get_country_flags(links):
 
 
 def main():
-    df = get_country_list()
+    df = get_states_list()
     attributes = ['capital', 'largest city', 'currency']
     # area total, population total, religion, language, currency
     df_2 = get_country_attributes(df['links'], attributes)
