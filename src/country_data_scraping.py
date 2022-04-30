@@ -1,13 +1,9 @@
 import warnings
-from difflib import SequenceMatcher
-from locale import currency
 
 import pandas as pd
 
 import cleaners.string_cleaner as sc
 import scrapers.static_website_scraper as sws
-
-# TODO: bei hier weiter machen: geokoordinaten beim capital rausnehmen
 
 
 def get_states_list():
@@ -20,7 +16,8 @@ def get_states_list():
         data (pd.DataFrame): Dataframe 
 
     Raises:
-        None
+        ValueError: no table found using scape_tables()
+        Warning: more than one table found using scrape_tables()
     """
     # write status to console
     print("started: get_states_list()")
@@ -67,7 +64,19 @@ def get_states_list():
 
 
 def get_state_attributes(link, attributes):
+    """Scrape a attributes of a state from Wikipedia.
 
+    Parameters:
+        link (str): url to wikipedia page of state
+        attributes (list): attributes to search for
+
+    Returns:
+        state_attributes (dict): key value pairs for state attributes
+
+    Raises:
+        ValueError: no table or match found when searching
+        Warning: more than one or match table found when searching 
+    """
     # write status to console
     print("started: get_state_attributes() for " + link)
 
@@ -103,7 +112,7 @@ def get_state_attributes(link, attributes):
             if first_level_match.shape[0] == 0:
                 raise ValueError(
                     'no match found for the first level of the nested attribute:' + attribute)
-            elif attribute_match.shape[0] != 1:
+            elif first_level_match.shape[0] != 1:
                 warnings.warn(
                     'more than one match found for first level of the nested attribute:' + attribute)
 
@@ -139,7 +148,11 @@ def get_state_attributes(link, attributes):
     return state_attributes
 
 
-def get_country_flags(links):
+def get_state_flag(links):
+    pass
+
+
+def get_state_map(links):
     pass
 
 
@@ -155,12 +168,16 @@ def main():
                   'currency']
     for state_link in states_list['links']:
         state_attributes = get_state_attributes(state_link, attributes)
+        state_flag = get_state_flag(state_link)
+        state_map = get_state_map(state_link)
         print('hi')
-        # states list zeile mit state attributes zusammenhängen
-        # an df anhängen, ggfs mit if
 
-    # area total, population total, religion, language, currency
-    #df_2 = get_state_attributes(df['links'], attributes)
+        # dicts zusammenhängen
+        # state name und un status hinzufügen
+        # dicts unter name des states in eine großes dict
+
+    # dict of dict to dataframe
+
     df.to_csv('data/export.csv', header=False, index=False, sep=';')
 
     print(df.head())
