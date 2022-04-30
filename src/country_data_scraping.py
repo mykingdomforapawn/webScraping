@@ -7,7 +7,6 @@ import pandas as pd
 import cleaners.string_cleaner as sc
 import scrapers.static_website_scraper as sws
 
-# TODO: Bisschen Logging Nachrichten
 # TODO: bei hier weiter machen: geokoordinaten beim capital rausnehmen
 
 
@@ -67,67 +66,77 @@ def get_states_list():
     return df
 
 
-def get_country_attributes(links, attributes):
+def get_state_attributes(link, attributes):
 
-    for index in range(links.shape[0]):
-        # scrapte tables of specific country
-        scraped_tables = sws.scrape_tables(
-            url=links.iloc[index],
-            table_attributes={'class': 'infobox'},
-            append_links=True)
+    # write status to console
+    print("started: get_state_attributes() for " + link)
 
-        # check validity of scraped table
-        if len(scraped_tables) == 0:
-            raise ValueError('no table found. adjust url or table attributes.')
-        elif len(scraped_tables) != 1:
-            warnings.warn(
-                'more than one table found. first one was selected. adjust table attributes.')
-        scraped_table = scraped_tables[0]
+    # scrape table of specific state
+    scraped_table = sws.scrape_tables(
+        url=link,
+        table_attributes={'class': 'infobox'},
+        append_links=False)
 
-        # set up dataframe with selected data
-        df_country = pd.DataFrame()
-        df_country['link'] = links.iloc[index]
+    # check validity of scraped table
+    if len(scraped_table) == 0:
+        raise ValueError('no table found. adjust url or table attributes.')
+    elif len(scraped_table) != 1:
+        warnings.warn(
+            'more than one table found. first one was selected. adjust table attributes.')
+    scraped_table = scraped_table[0]
 
-        # search for pre-defined attributes
-        for attribute in attributes:
-            attribute_table = scraped_table[scraped_table.iloc[:, 0].str.contains(
-                attribute, case=False)]
-            if attribute_table.shape[0] == 0:
-                raise ValueError('error 1.')
-            elif attribute_table.shape[0] != 1:
+    # set up dict for state attributes
+    state_attributes = {'link': link}
+
+    # search for pre-defined attributes
+    for attribute in attributes:
+
+        # adjust search behaviour if nested attribute
+        if '_' in attribute:
+
+            # match the first level of the attribute
+            sub_attributes = attribute.split('_')
+            first_level_match = scraped_table[scraped_table.iloc[:, 0].str.contains(
+                sub_attributes[0], case=False)]
+
+            # check validity of first level match
+            if first_level_match.shape[0] == 0:
+                raise ValueError(
+                    'no match found for the first level of the nested attribute:' + attribute)
+            elif attribute_match.shape[0] != 1:
                 warnings.warn(
-                    'error 2')
-            # hier weiter
-            # neuer tabelle mit column = attr hinzufügen und dann den wert da rein
-            #
-            print('hihi')
-            # attribute_table.iloc[0, 1]
+                    'more than one match found for first level of the nested attribute:' + attribute)
 
-            # die tab einer gesamttab hinzufügen, sodass die sich langsam aufbaut, oder als dict?
-        print('hi')
-        # hier weiter
+            # match the second level of the attribute
+            first_level_match_table = scraped_table.iloc[first_level_match.index[0]:, :]
+            second_level_match = first_level_match_table[first_level_match_table.iloc[:, 0].str.contains(
+                sub_attributes[1], case=False)]
 
-        #df3 = scraped_table[scraped_table.iloc[:, 0].str.contains('Capital')]
+            # check validity of first level match
+            if second_level_match.shape[0] == 0:
+                raise ValueError(
+                    'no match found for the second level of the nested attribute:' + attribute)
 
-        #df['links'] = scraped_table.iloc[1:, 4]
-        # df['sovereignityDispute'] = scraped_table.iloc[1:, 2] + \
-        #    " - " + scraped_table.iloc[1:, 3]
+            # select first match as the final attribute match
+            attribute_match = second_level_match
 
-        # capital
-        # largest city
-        # area total
-        # population total
-        # religion
-        # language
-        # currency
+        else:
+            # match the attribute
+            attribute_match = scraped_table[scraped_table.iloc[:, 0].str.contains(
+                attribute, case=False)]
 
-        print('jamoin')
-    # scrapte table of states
+            # check validity of found values
+            if attribute_match.shape[0] == 0:
+                raise ValueError(
+                    'no match found for the attribute:' + attribute)
+            elif attribute_match.shape[0] != 1:
+                warnings.warn(
+                    'more than ona match found for the attribute:' + attribute)
 
-    # hier liste an links eingen
-    # sucht dann die daten und fügt sie an
-    # das geht zurück und über die links werden dann die df s gematched
-    pass
+        # add attributes and values to dict
+        state_attributes[attribute] = attribute_match.iloc[0, 1]
+
+    return state_attributes
 
 
 def get_country_flags(links):
@@ -135,10 +144,23 @@ def get_country_flags(links):
 
 
 def main():
-    df = get_states_list()
-    attributes = ['capital', 'largest city', 'currency']
+    df = pd.DataFrame()
+    states_list = get_states_list()
+    attributes = ['capital',
+                  'largest city',
+                  'language',
+                  'religion',
+                  'area_total',
+                  'population_estimate',
+                  'currency']
+    for state_link in states_list['links']:
+        state_attributes = get_state_attributes(state_link, attributes)
+        print('hi')
+        # states list zeile mit state attributes zusammenhängen
+        # an df anhängen, ggfs mit if
+
     # area total, population total, religion, language, currency
-    df_2 = get_country_attributes(df['links'], attributes)
+    #df_2 = get_state_attributes(df['links'], attributes)
     df.to_csv('data/export.csv', header=False, index=False, sep=';')
 
     print(df.head())
