@@ -63,6 +63,18 @@ def get_states_list():
     return df
 
 
+def get_attributes_list():
+    attributes = ['capital',
+                  'largest city',
+                  'language',
+                  'religion',
+                  'area_total',
+                  'population_estimate',
+                  'currency']
+
+    return attributes
+
+
 def get_state_attributes(link, attributes):
     """Scrape a attributes of a state from Wikipedia.
 
@@ -83,7 +95,7 @@ def get_state_attributes(link, attributes):
     # scrape table of specific state
     scraped_table = sws.scrape_tables(
         url=link,
-        table_attributes={'class': 'infobox'},
+        table_attributes={'class': 'infobox ib-country vcard'},
         append_links=False)
 
     # check validity of scraped table
@@ -225,8 +237,12 @@ def get_state_map(link):
     map_match = [f for f in scraped_links.iloc[:, 0] if all(
         c in f for c in [state_name, 'orthographic_projection'])]
     if len(map_match) == 0:
-        raise ValueError(
-            'no match found for the map of:' + link)
+        map_match_additional = [f for f in scraped_links.iloc[:, 0] if all(
+            c in f for c in [state_name, 'Location'])]
+        map_match = map_match + map_match_additional
+        if len(map_match) == 0:
+            raise ValueError(
+                'no match found for the map of:' + link)
     elif len(map_match) != 1:
         warnings.warn(
             'more than ona match found for the map of:' + link)
@@ -250,25 +266,42 @@ def get_state_map(link):
     return state_map
 
 
-def main():
-    states_list = get_states_list()
-    attributes = ['capital',
-                  'largest city',
-                  'language',
-                  'religion',
-                  'area_total',
-                  'population_estimate',
-                  'currency']
-    states_dict = {}
-    for state_link in states_list['links']:
-        #state_attributes = get_state_attributes(state_link, attributes)
-        #state_flag = get_state_flag(state_link)
-        state_map = get_state_map(state_link)
-        print('hi')
+def test_some_url(url):
+    attributes_list = get_attributes_list()
+    state_dict = {'link': url}
+    state_dict.update(get_state_attributes(
+        state_dict['link'], attributes_list))
+    state_dict.update(get_state_flag(state_dict['link']))
+    state_dict.update(get_state_map(state_dict['link']))
+    pass
 
-        # dicts zusammenhängen
-        # state name und un status hinzufügen
-        # dicts unter name des states in eine großes dict
+
+def main():
+    test_url = 'https://en.wikipedia.org//wiki/Albania'
+    test_some_url(test_url)
+
+    # init dict to collect dicts of individual states
+    states_dict = {}
+
+    # scrape list of states and attributes to scrape for each state
+    states_list = get_states_list()
+    attributes_list = get_attributes_list()
+
+    # iterate over states
+    for _, row in states_list.iterrows():
+
+        # collect data about an individual state
+        state_dict = {'name': row['name'], 'link': row['links'],
+                      'sovereignityDispute': row['sovereignityDispute']}
+        state_dict.update(get_state_attributes(
+            state_dict['link'], attributes_list))
+        state_dict.update(get_state_flag(state_dict['link']))
+        state_dict.update(get_state_map(state_dict['link']))
+
+        # add state dict to a dict of all states
+        states_dict[row['name']] = state_dict
+
+        print('hi')
 
     # dict of dict to dataframe
     # clean dataframe
