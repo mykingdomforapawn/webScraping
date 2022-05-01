@@ -148,16 +148,84 @@ def get_state_attributes(link, attributes):
     return state_attributes
 
 
-def get_state_flag(links):
-    pass
+def get_state_flag(link):
+    """Scrape an url for the flag of a state from Wikipedia.
+
+    Parameters:
+        link (str): url to wikipedia page of state
+
+    Returns:
+        state_flag (dict): key value pairs for state flag
+
+    Raises:
+        ValueError: no table or match found when searching
+        Warning: more than one or match table found when searching 
+    """
+    # write status to console
+    print("started: get_state_flag() for " + link)
+    state_flag = {}
+
+    # scrape links of specific state
+    scraped_links = sws.scrape_links(
+        url=link,
+        link_attributes={'class': 'image'})
+
+    # search for link to the flag and check validity
+    flag_match = scraped_links[scraped_links.iloc[:, 0].str.contains(
+        'flag', case=False)]
+    if flag_match.shape[0] == 0:
+        raise ValueError(
+            'no match found for the flag of:' + link)
+    elif flag_match.shape[0] != 1:
+        warnings.warn(
+            'more than ona match found for the flag of:' + link)
+
+    # scrape follow up links of an image to get the original
+    scraped_links = sws.scrape_links(
+        url='https://en.wikipedia.org/' + flag_match.iloc[0, 0],
+        link_attributes={'class': 'internal'})
+
+    # check validity of results
+    if scraped_links.shape[0] == 0:
+        raise ValueError(
+            'no match found for the original link of the flag of:' + link)
+    elif scraped_links.shape[0] != 1:
+        warnings.warn(
+            'more than ona match found for the original link of the flag of:' + link)
+
+    state_flag['flag'] = scraped_links['href'].iloc[0]
+
+    return state_flag
 
 
-def get_state_map(links):
-    pass
+def get_state_map(link):
+    """Scrape an url for the map of a state from Wikipedia.
+
+    Parameters:
+        link (str): url to wikipedia page of state
+
+    Returns:
+        state_map (dict): key value pairs for state map
+
+    Raises:
+        ValueError: no table or match found when searching
+        Warning: more than one or match table found when searching 
+    """
+    # write status to console
+    print("started: get_state_map() for " + link)
+    state_flag = {}
+
+    scraped_table = 1
+    # search for link to the map and check validity
+    state_name = link.rsplit('/', 1)[-1]
+    state_name = state_name.replace('_', ' ')
+    map_match = [f for f in scraped_table.iloc[:, 0] if all(
+        c in f for c in [state_name, 'orthographic_projection'])]
+
+    return 'hi'
 
 
 def main():
-    df = pd.DataFrame()
     states_list = get_states_list()
     attributes = ['capital',
                   'largest city',
@@ -166,10 +234,11 @@ def main():
                   'area_total',
                   'population_estimate',
                   'currency']
+    states_dict = {}
     for state_link in states_list['links']:
-        state_attributes = get_state_attributes(state_link, attributes)
-        state_flag = get_state_flag(state_link)
-        state_map = get_state_map(state_link)
+        #state_attributes = get_state_attributes(state_link, attributes)
+        #state_flag = get_state_flag(state_link)
+        state_map = get_state_images(state_link)
         print('hi')
 
         # dicts zusammenhängen
@@ -177,6 +246,7 @@ def main():
         # dicts unter name des states in eine großes dict
 
     # dict of dict to dataframe
+    # clean dataframe
 
     df.to_csv('data/export.csv', header=False, index=False, sep=';')
 
