@@ -163,7 +163,6 @@ def get_state_flag(link):
     """
     # write status to console
     print("started: get_state_flag() for " + link)
-    state_flag = {}
 
     # scrape links of specific state
     scraped_links = sws.scrape_links(
@@ -193,7 +192,8 @@ def get_state_flag(link):
         warnings.warn(
             'more than ona match found for the original link of the flag of:' + link)
 
-    state_flag['flag'] = scraped_links['href'].iloc[0]
+    # write url to flag to dict
+    state_flag = {'flag': scraped_links['href'].iloc[0]}
 
     return state_flag
 
@@ -213,16 +213,41 @@ def get_state_map(link):
     """
     # write status to console
     print("started: get_state_map() for " + link)
-    state_flag = {}
 
-    scraped_table = 1
+    # scrape links of specific state
+    scraped_links = sws.scrape_links(
+        url=link,
+        link_attributes={'class': 'image'})
+
     # search for link to the map and check validity
     state_name = link.rsplit('/', 1)[-1]
     state_name = state_name.replace('_', ' ')
-    map_match = [f for f in scraped_table.iloc[:, 0] if all(
+    map_match = [f for f in scraped_links.iloc[:, 0] if all(
         c in f for c in [state_name, 'orthographic_projection'])]
+    if len(map_match) == 0:
+        raise ValueError(
+            'no match found for the map of:' + link)
+    elif len(map_match) != 1:
+        warnings.warn(
+            'more than ona match found for the map of:' + link)
 
-    return 'hi'
+    # scrape follow up links of an image to get the original
+    scraped_links = sws.scrape_links(
+        url='https://en.wikipedia.org/' + map_match[0],
+        link_attributes={'class': 'internal'})
+
+    # check validity of results
+    if scraped_links.shape[0] == 0:
+        raise ValueError(
+            'no match found for the original link of the flag of:' + link)
+    elif scraped_links.shape[0] != 1:
+        warnings.warn(
+            'more than ona match found for the original link of the flag of:' + link)
+
+    # write url to map to dict
+    state_map = {'map': scraped_links['href'].iloc[0]}
+
+    return state_map
 
 
 def main():
@@ -238,7 +263,7 @@ def main():
     for state_link in states_list['links']:
         #state_attributes = get_state_attributes(state_link, attributes)
         #state_flag = get_state_flag(state_link)
-        state_map = get_state_images(state_link)
+        state_map = get_state_map(state_link)
         print('hi')
 
         # dicts zusammenhängen
