@@ -5,6 +5,11 @@ import pandas as pd
 import cleaners.string_cleaner as sc
 import scrapers.static_website_scraper as sws
 
+# TODO: search routine testen mit test urls und dabei die phrases anpassen
+# gerade bei map
+# funktioniert für afghanistan so gerade nicht gut
+# ggfs besser, wenn man erst nach href sucht und dann erst nach title
+
 
 def get_states_list():
     """Scrape a list of states from Wikipedia.
@@ -56,9 +61,6 @@ def get_states_list():
     for index in range(df.shape[0]):
         df['links'].iloc[index] = "https://en.wikipedia.org/" + \
             df['links'].iloc[index][0]
-
-    # write status to console
-    print("finished: get_states_list()")
 
     return df
 
@@ -150,14 +152,33 @@ def get_state_attributes(link, attributes):
             if attribute_match.shape[0] == 0:
                 raise ValueError(
                     'no match found for the attribute:' + attribute)
-            elif attribute_match.shape[0] != 1:
-                warnings.warn(
-                    'more than ona match found for the attribute:' + attribute)
+            attribute_match = pd.DataFrame(
+                [attribute_match.iloc[0, 0], attribute_match.iloc[:, 1].str.cat(sep=' ')]).T
+            # elif attribute_match.shape[0] != 1:
 
         # add attributes and values to dict
         state_attributes[attribute] = attribute_match.iloc[0, 1]
 
     return state_attributes
+
+
+def search_routine(series, phrases, index_start=0, index_stop=1):
+
+    match = [s for s in series if all(
+        sp in s for sp in phrases[index_start:index_stop])]
+
+    if len(match) == 1:
+        warnings.warn(
+            'no distinct match found.')
+        return match
+    elif index_start == len(phrases)-1 or index_stop == len(phrases):
+        return []
+    elif len(match) > 1:
+        match = search_routine(series, phrases, index_start, index_stop+1)
+    elif len(match) == 0:
+        match = search_routine(series, phrases, index_start+1, index_start+2)
+
+    return match
 
 
 def get_state_flag(link):
@@ -182,18 +203,13 @@ def get_state_flag(link):
         link_attributes={'class': 'image'})
 
     # search for link to the flag and check validity
-    flag_match = scraped_links[scraped_links.iloc[:, 0].str.contains(
-        'flag', case=False)]
-    if flag_match.shape[0] == 0:
-        raise ValueError(
-            'no match found for the flag of:' + link)
-    elif flag_match.shape[0] != 1:
-        warnings.warn(
-            'more than ona match found for the flag of:' + link)
+    search_phrases = ['Flag', link.rsplit('/', 1)[-1]]
+    flag_match = search_routine(
+        scraped_links.iloc[:, 0], search_phrases)
 
     # scrape follow up links of an image to get the original
     scraped_links = sws.scrape_links(
-        url='https://en.wikipedia.org/' + flag_match.iloc[0, 0],
+        url='https://en.wikipedia.org/' + flag_match[0],
         link_attributes={'class': 'internal'})
 
     # check validity of results
@@ -231,21 +247,24 @@ def get_state_map(link):
         url=link,
         link_attributes={'class': 'image'})
 
-    # search for link to the map and check validity
-    state_name = link.rsplit('/', 1)[-1]
-    state_name = state_name.replace('_', ' ')
-    map_match = [f for f in scraped_links.iloc[:, 0] if all(
-        c in f for c in [state_name, 'orthographic_projection'])]
-    if len(map_match) == 0:
-        map_match_additional = [f for f in scraped_links.iloc[:, 0] if all(
-            c in f for c in [state_name, 'Location'])]
-        map_match = map_match + map_match_additional
+    # search for link to the map by title
+    search_phrases = ['Location']
+    map_match = search_routine(
+        scraped_links['title'].astype(str), search_phrases)
+
+    # get href of map match
+    if len(map_match) == 1:
+        map_match = scraped_links['href'][scraped_links['title']
+                                          == map_match[0]].to_list()
+
+    # search for link to the map by href
+    else:
+        search_phrases = ['orthographic', 'Location', link.rsplit('/', 1)[-1]]
+        map_match = search_routine(
+            scraped_links['href'], search_phrases)
         if len(map_match) == 0:
             raise ValueError(
                 'no match found for the map of:' + link)
-    elif len(map_match) != 1:
-        warnings.warn(
-            'more than ona match found for the map of:' + link)
 
     # scrape follow up links of an image to get the original
     scraped_links = sws.scrape_links(
@@ -269,15 +288,15 @@ def get_state_map(link):
 def test_some_url(url):
     attributes_list = get_attributes_list()
     state_dict = {'link': url}
-    state_dict.update(get_state_attributes(
-        state_dict['link'], attributes_list))
-    state_dict.update(get_state_flag(state_dict['link']))
+    # state_dict.update(get_state_attributes(
+    #    state_dict['link'], attributes_list))
+    # state_dict.update(get_state_flag(state_dict['link']))
     state_dict.update(get_state_map(state_dict['link']))
     pass
 
 
 def main():
-    test_url = 'https://en.wikipedia.org//wiki/Albania'
+    test_url = 'https://en.wikipedia.org/wiki/Afghanistan'
     test_some_url(test_url)
 
     # init dict to collect dicts of individual states
